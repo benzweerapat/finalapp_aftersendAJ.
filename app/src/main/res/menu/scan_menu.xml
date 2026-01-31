@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_cellular"
+        android:title="Cellular (4G/5G)"
+         />
+
+    <item
+        android:id="@+id/menu_wifi"
+        android:title="WiFi Scan"
+        />
+</menu>

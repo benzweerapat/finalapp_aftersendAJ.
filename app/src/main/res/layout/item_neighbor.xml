@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingVertical="8dp"
+    android:paddingHorizontal="12dp"
+    android:background="#1E1E1E"
+    android:gravity="center_vertical">
+
+    <TextView
+        android:id="@+id/tvIndex"
+        android:layout_width="36dp"
+        android:layout_height="wrap_content"
+        android:text="1"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"/>
+
+    <TextView
+        android:id="@+id/tvTech"
+        android:layout_width="64dp"
+        android:layout_height="wrap_content"
+        android:text="LTE"
+        android:textColor="#B0BEC5"
+        android:textSize="12sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/tvArfcn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="1500"
+        android:textColor="#FFFFFF"
+        android:textSize="12sp"/>
+
+    <TextView
+        android:id="@+id/tvRsrp"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="-95"
+        android:textColor="#000000"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:paddingVertical="2dp"
+        android:paddingHorizontal="4dp"
+        android:background="#7CF3A1"/>
+
+    <TextView
+        android:id="@+id/tvId"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="356"
+        android:textColor="#FFFFFF"
+        android:gravity="end"
+        android:textSize="12sp"/>
+
+</LinearLayout>
