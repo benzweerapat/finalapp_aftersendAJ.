@@ -339,7 +339,7 @@
                         android:id="@+id/wifiSnr"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="— dB"
+                        android:text="— "
                         android:textColor="#E0E0E0"
                         android:textSize="13sp"/>
 
