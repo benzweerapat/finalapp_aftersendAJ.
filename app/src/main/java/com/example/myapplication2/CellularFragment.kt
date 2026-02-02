@@ -396,7 +396,8 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
             // [แก้ไข] Mapping ข้อมูลลง 65 คอลัมน์ (0-64)
             val row = mutableListOf<String>()
-            row.add(reportId) // 0
+            row.add(reportId.toString()) // ✅
+            // 0
             row.add(sysTime)  // 1
             row.add(simState) // 2
             row.add(svcState) // 3
@@ -461,6 +462,71 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
             mainActivity.addCsvRow(row)
         }
+        // --- เริ่มวางโค้ดที่คุณเขียนมาตรงนี้ ---
+        if (mainActivity.isRecordingCsv) {
+            // อัปเดตเลข report สำหรับรอบการสแกนนี้ (ทำครั้งเดียวต่อวินาที)
+            // หมายเหตุ: ควรให้ MainActivity เป็นคน ++ reportCounter ในฝั่งบันทึก Serving
+            val reportId = mainActivity.getNextReportId()
+
+            val now = Date()
+            val sysTime = SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(now)
+            val loc = mainActivity.latestLocation
+
+            val sTech = techCsv
+            val sArfcn = arfcnStr
+            val sPci = pscPci
+            val sCid = longCid
+
+            var nIdx = 1
+            // allInfo คือ List<CellInfo> ที่ได้จาก telephonyManager.allCellInfo
+            for (ci in allInfo) {
+                if (!ci.isRegistered) { // neighbor เท่านั้น
+                    val nRow = mutableListOf<String>()
+                    nRow.add(reportId.toString()) // ✅
+
+                    nRow.add(nIdx.toString())
+                    nRow.add(sTech); nRow.add(sArfcn); nRow.add(sPci); nRow.add(sCid)
+
+                    when (ci) {
+                        is CellInfoLte -> {
+                            val id = ci.cellIdentity
+                            val ss = ci.cellSignalStrength
+
+                            nRow.add("LTE")
+                            nRow.add(id.earfcn.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(id.pci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(ss.rsrp.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(ss.rsrq.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(
+                                ss.rssnr.takeIf { it != Int.MAX_VALUE }
+                                    ?.let { "%.1f".format(it / 10.0) } ?: ""
+                            )
+                        }
+
+                        is CellInfoNr -> {
+                            val id = ci.cellIdentity as CellIdentityNr
+                            val ss = ci.cellSignalStrength as CellSignalStrengthNr
+
+                            nRow.add("NR")
+                            nRow.add(id.nrarfcn.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(id.pci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(ss.ssRsrp.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(ss.ssRsrq.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            nRow.add(ss.ssSinr.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                        }
+                    }
+
+                    nRow.add(loc?.latitude?.toString() ?: "")
+                    nRow.add(loc?.longitude?.toString() ?: "")
+                    nRow.add(sysTime)
+
+                    mainActivity.addNeighborCsvRow(nRow)
+                    nIdx++
+                }
+            }
+        }
+        // --- จบการวางโค้ด ---
+        mainActivity.incrementReportCounter()
     }
 
     // --- Helper Functions ---

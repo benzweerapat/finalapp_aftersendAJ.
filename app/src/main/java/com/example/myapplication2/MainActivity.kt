@@ -57,10 +57,11 @@ class MainActivity : AppCompatActivity() {
     private var wifiSessionCounter = 1
 
     private val permissionRequestCode = 101
+    private var reportCounter = 1
 
     // ================== CELLULAR CSV ==================
     var isRecordingCsv = false
-    private var csvReportCounter = 0
+
     private val csvBuffer = mutableListOf<List<String>>()
     private fun requestLocationPermission() {
         if (
@@ -187,7 +188,13 @@ class MainActivity : AppCompatActivity() {
 
     // ================== WIFI CSV ==================
     var isRecordingWifiCsv = false
+
+    // ค้นหาส่วน Cellular CSV แล้วเพิ่มตัวแปรเหล่านี้เข้าไป
+
+
+    private var servingTechForFileName = "UNKNOWN" // เก็บไว้ใช้ตอนตั้งชื่อไฟล์
     private val wifiCsvBuffer = mutableListOf<List<String>>()
+
 
     val wifiCsvHeader = listOf(
         "report","sys_time","lat","long","altitude",
@@ -196,6 +203,49 @@ class MainActivity : AppCompatActivity() {
         "baro_pressure","baro_rel_alt","baro_floor",
         "gps_rel_alt","gps_floor"
     )
+    // 1. Header สำหรับ Neighbor CSV
+    val neighborCsvHeader = listOf(
+        "report", "neighbor_index",
+        "serving_tech", "serving_arfcn", "serving_pci", "serving_cell_id",
+        "neighbor_tech", "neighbor_arfcn", "neighbor_pci", "neighbor_rsrp",
+        "neighbor_rsrq", "neighbor_sinr",
+        "latitude", "longitude", "timestamp"
+    )
+
+    // 2. Buffer สำหรับเก็บข้อมูลแถวของ Neighbor
+    private val neighborCsvBuffer = mutableListOf<List<String>>()
+    // ฟังก์ชันสำหรับขอเลข report ล่าสุด (เพื่อให้ serving และ neighbor ตรงกัน)
+    fun getNextReportId(): Int = reportCounter
+    fun incrementReportCounter() {
+        reportCounter++
+    }
+
+    // 3. ฟังก์ชันสำหรับเพิ่มแถวข้อมูล (เรียกจาก Fragment)
+    fun addNeighborCsvRow(row: List<String>) {
+        if (isRecordingCsv) {
+            neighborCsvBuffer.add(row)
+        }
+    }
+    private fun saveNeighborCsv() {
+        if (neighborCsvBuffer.isEmpty()) return
+
+        val now = Date()
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
+
+        // ใช้ค่า Session ล่าสุด (ลบ 1 เพราะ cellularSessionCounter มักจะถูกบวกเพิ่มไปแล้วใน saveCellularCsv)
+        val session = cellularSessionCounter - 1
+        val fileName = "Session_${session}_neighbor_${servingTechForFileName}_$timestamp.csv"
+
+        // เรียกใช้ saveCsv ที่มีอยู่แล้วเพื่อความสะดวก
+        saveCsv(fileName, neighborCsvHeader, neighborCsvBuffer, "Cellular")
+
+        // เคลียร์ข้อมูลทิ้งหลังบันทึกเสร็จ
+        neighborCsvBuffer.clear()
+    }
+
+// 4. แก้ไขฟังก์ชัน saveCellularCsv() ให้บันทึกไฟล์ Neighbor ด้วย
+// โดยใช้ชื่อไฟล์ตามรูปแบบ: Session_<id>_neighbor_<TECH>_<timestamp>.csv
+
 
     // ================== ACTIVITY ==================
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -438,28 +488,27 @@ class MainActivity : AppCompatActivity() {
             when (fragment) {
 
                 // ================= CELLULAR =================
+                // ค้นหาส่วน scanBtn.setOnClickListener ใน setupButtons()
                 is CellularFragment -> {
-
                     if (!isRecordingCsv) {
                         calibrateAltitude()
                         csvBuffer.clear()
-                        csvReportCounter = 0
+                        neighborCsvBuffer.clear() // ✅ เพิ่ม
+                        reportCounter = 1         // ✅ เริ่มที่ 1
                         isRecordingCsv = true
-
                         scanBtn.text = "STOP"
-                        toast("Cellular logging started")
-
                     } else {
                         isRecordingCsv = false
                         scanBtn.text = "START"
-                        // ⬇️ วางตรงนี้
+
                         if (!canWriteLegacyStorage()) {
-                            toast("Storage permission required to save CSV")
+                            toast("Storage permission required")
                             return@setOnClickListener
                         }
 
-                        saveCellularCsv()
-                        toast("Cellular CSV saved")
+                        saveCellularCsv()  // บันทึกไฟล์ Serving
+                        saveNeighborCsv()  // ✅ บันทึกไฟล์ Neighbor ต่อท้ายทันที
+                        toast("All CSVs saved")
                     }
                 }
 
@@ -484,7 +533,8 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         saveWifiCsv(fragment.getCurrentSsid())
-                        toast("WiFi CSV saved")
+                        saveWifiNeighborCsv()   // ✅ เพิ่มบรรทัดนี้
+                        toast("WiFi CSV + Neighbor CSV saved")
                     }
                 }
             }
@@ -514,54 +564,15 @@ class MainActivity : AppCompatActivity() {
     fun addCsvRow(row: List<String>) {
         if (isRecordingCsv) {
             csvBuffer.add(row)
-            csvReportCounter++
+
+            // ✅ col 21 = tech
+            if (row.size > 21) {
+                servingTechForFileName = row[21]
+            }
         }
     }
-    fun addNeighborCsvRow(
-        servingTech: String,
-        servingArfcn: Int?,
-        servingPci: Int?,
-        servingEci: Long?,
-        neighborIndex: Int,
-        neighborTech: String,
-        neighborArfcn: Int?,
-        neighborPci: Int?,
-        neighborRsrp: Int?,
-        neighborRsrq: Int?,
-        neighborSinr: Float?
-    ) {
-        if (!isRecordingCsv) return   // บันทึกเฉพาะตอน START
 
-        val now = Date()
-        val sysTime =
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
 
-        val loc = latestLocation
-
-        val row = listOf(
-            cellularSessionCounter.toString(),          // session_id
-            sysTime,                                    // sys_time
-            csvReportCounter.toString(),                // report
-
-            servingTech,
-            servingArfcn?.toString() ?: "",
-            servingPci?.toString() ?: "",
-            servingEci?.toString() ?: "",
-
-            neighborIndex.toString(),
-            neighborTech,
-            neighborArfcn?.toString() ?: "",
-            neighborPci?.toString() ?: "",
-            neighborRsrp?.toString() ?: "",
-            neighborRsrq?.toString() ?: "",
-            neighborSinr?.toString() ?: "",
-
-            loc?.latitude?.toString() ?: "",
-            loc?.longitude?.toString() ?: ""
-        )
-
-        neighborCsvBuffer.add(row)
-    }
 
     fun addWifiCsvRow(
         ssid: String,
@@ -638,6 +649,24 @@ class MainActivity : AppCompatActivity() {
         val context = newBase.createConfigurationContext(config)
         super.attachBaseContext(context)
     }
+    // ส่วน Header (แนะนำให้ประกาศเป็นตัวแปร global หรือในฟังก์ชัน save)
+    val wifiNeighborHeader = listOf(
+        "report", "neighbor_index", "connected_ssid", "neighbor_ssid",
+        "neighbor_bssid", "neighbor_level", "neighbor_freq",
+        "capabilities", "lat", "long", "sys_time"
+    )
+
+    // เพิ่มใน MainActivity.kt
+    private val wifiNeighborCsvBuffer = mutableListOf<List<String>>()
+
+    fun addWifiNeighborCsvRow(row: List<String>) {
+        if (isRecordingWifiCsv) {
+            wifiNeighborCsvBuffer.add(row)
+        }
+    }
+
+// ในส่วนที่สั่ง STOP Recording WiFi
+// ให้เรียกฟังก์ชัน saveWifiNeighborCsv() ต่อท้าย saveWifiCsv()
 
 
 
@@ -645,7 +674,7 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    fun getNextReportId(): String = csvReportCounter.toString()
+
 
     // ================== LOCATION / SENSOR ==================
     private val locListener = object : android.location.LocationListener {
@@ -774,6 +803,28 @@ class MainActivity : AppCompatActivity() {
         saveCsv(fileName, wifiCsvHeader, wifiCsvBuffer, "Wifi")
 
     }
+    private fun saveWifiNeighborCsv() {
+        if (wifiNeighborCsvBuffer.isEmpty()) {
+            toast("No WiFi Neighbor data to save")
+            return
+        }
+
+        val now = Date()
+        val fileName =
+            "Session_${wifiSessionCounter - 1}_WifiNeighbor_" +
+                    SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) +
+                    ".csv"
+
+        saveCsv(
+            fileName = fileName,
+            header = wifiNeighborHeader,
+            rows = wifiNeighborCsvBuffer,
+            subDir = "Wifi"
+        )
+
+        wifiNeighborCsvBuffer.clear()
+    }
+
 
     private fun saveCellularCsv() {
         val now = Date()

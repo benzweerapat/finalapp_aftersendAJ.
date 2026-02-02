@@ -273,6 +273,92 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             handler.postDelayed(this, 1000)
         }
     }
+    private fun recordWifiNeighbors(results: List<ScanResult>) {
+        if (mainActivity.isRecordingWifiCsv) {
+            // ใช้เลข Report ล่าสุดจาก MainActivity
+            val reportId = mainActivity.getNextReportId()
+            val now = Date()
+            val sysTime =
+                SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
+            val loc = mainActivity.latestLocation
+
+            // ข้อมูลตัวที่เชื่อมต่ออยู่ปัจจุบัน
+            val wifiManager = requireContext().applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val info = wifiManager.connectionInfo
+            val currentSsid = info.ssid.replace("\"", "")
+            val currentBssid = info.bssid
+
+            var nIdx = 1
+            for (res in results) {
+                // ไม่บันทึกตัวที่ซ้ำกับตัวที่เชื่อมต่ออยู่ (ถ้าต้องการเก็บเฉพาะ Neighbor)
+                if (res.BSSID != currentBssid) {
+                    val nRow = mutableListOf<String>()
+                    nRow.add(reportId.toString()) // ✅
+                    nRow.add(nIdx.toString())
+                    nRow.add(currentSsid)
+                    nRow.add(res.SSID)
+                    nRow.add(res.BSSID)
+                    nRow.add(res.level.toString())
+                    nRow.add(res.frequency.toString())
+                    nRow.add(res.capabilities)
+                    nRow.add(loc?.latitude?.toString() ?: "")
+                    nRow.add(loc?.longitude?.toString() ?: "")
+                    nRow.add(sysTime)
+
+                    mainActivity.addWifiNeighborCsvRow(nRow)
+                    nIdx++
+                }
+            }
+        }
+    }
+    // วางไว้ภายใน class WifiFragment
+    private fun updateWifiNeighborsCsv(results: List<ScanResult>) {
+        if (mainActivity.isRecordingWifiCsv) {
+            // 1. ดึงเลข Report ปัจจุบัน (ใช้ร่วมกับไฟล์ WiFi หลัก)
+            val reportId = mainActivity.getNextReportId()
+            val now = Date()
+            val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(now)
+            val loc = mainActivity.latestLocation
+
+            // 2. ข้อมูล WiFi ตัวที่เชื่อมต่ออยู่ (Serving)
+            val wifiManager = requireContext().applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val info = wifiManager.connectionInfo
+            val sSsid = info.ssid.replace("\"", "")
+            val sBssid = info.bssid ?: "00:00:00:00:00:00"
+
+            var nIdx = 1
+            for (res in results) {
+                // กรอง: ไม่บันทึกตัวที่ซ้ำกับตัวที่เชื่อมต่ออยู่ เพื่อแยกเป็น Neighbor จริงๆ
+                if (res.BSSID != sBssid) {
+                    val nRow = mutableListOf<String>()
+
+                    // [Column 1-2] Indexing
+                    nRow.add(reportId.toString()) // ✅
+                    nRow.add(nIdx.toString())
+
+                    // [Column 3-4] Serving Info
+                    nRow.add(sSsid)
+                    nRow.add(sBssid)
+
+                    // [Column 5-9] Neighbor Info
+                    nRow.add(res.SSID)          // neighbor_ssid
+                    nRow.add(res.BSSID)         // neighbor_bssid
+                    nRow.add(res.level.toString()) // neighbor_level (dBm)
+                    nRow.add(res.frequency.toString()) // neighbor_freq (MHz)
+                    nRow.add(res.capabilities)  // neighbor_capabilities (Security)
+
+                    // [Column 10-12] Location & Time
+                    nRow.add(loc?.latitude?.toString() ?: "")
+                    nRow.add(loc?.longitude?.toString() ?: "")
+                    nRow.add(timestamp)
+
+                    // 3. ส่งข้อมูลไปเก็บที่ MainActivity
+                    mainActivity.addWifiNeighborCsvRow(nRow)
+                    nIdx++
+                }
+            }
+        }
+    }
 
 
     /* ================= Core ================= */
@@ -478,12 +564,14 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private fun displayWifiScanResults() {
 
         if (!hasWifiPermission()) return
+        val results = wifiManager.scanResults
 
         wifiAdapter.setData(
             wifiManager.scanResults
                 .sortedByDescending { it.level }
                 .take(50)
         )
+        recordWifiNeighbors(results)
     }
 
 
