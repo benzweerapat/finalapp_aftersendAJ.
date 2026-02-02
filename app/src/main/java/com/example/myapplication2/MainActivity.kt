@@ -517,6 +517,52 @@ class MainActivity : AppCompatActivity() {
             csvReportCounter++
         }
     }
+    fun addNeighborCsvRow(
+        servingTech: String,
+        servingArfcn: Int?,
+        servingPci: Int?,
+        servingEci: Long?,
+        neighborIndex: Int,
+        neighborTech: String,
+        neighborArfcn: Int?,
+        neighborPci: Int?,
+        neighborRsrp: Int?,
+        neighborRsrq: Int?,
+        neighborSinr: Float?
+    ) {
+        if (!isRecordingCsv) return   // บันทึกเฉพาะตอน START
+
+        val now = Date()
+        val sysTime =
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
+
+        val loc = latestLocation
+
+        val row = listOf(
+            cellularSessionCounter.toString(),          // session_id
+            sysTime,                                    // sys_time
+            csvReportCounter.toString(),                // report
+
+            servingTech,
+            servingArfcn?.toString() ?: "",
+            servingPci?.toString() ?: "",
+            servingEci?.toString() ?: "",
+
+            neighborIndex.toString(),
+            neighborTech,
+            neighborArfcn?.toString() ?: "",
+            neighborPci?.toString() ?: "",
+            neighborRsrp?.toString() ?: "",
+            neighborRsrq?.toString() ?: "",
+            neighborSinr?.toString() ?: "",
+
+            loc?.latitude?.toString() ?: "",
+            loc?.longitude?.toString() ?: ""
+        )
+
+        neighborCsvBuffer.add(row)
+    }
+
     fun addWifiCsvRow(
         ssid: String,
         freq: Int?,
