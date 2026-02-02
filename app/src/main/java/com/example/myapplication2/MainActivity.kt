@@ -108,6 +108,83 @@ class MainActivity : AppCompatActivity() {
         "baro_pressure","baro_rel_alt","baro_floor","gps_rel_alt","gps_floor"
     )
 
+    val neighborLteCsvHeader = listOf(
+        "session_id",
+        "sys_time",
+        "report",
+
+        "serving_tech",
+        "serving_arfcn",
+        "serving_pci",
+        "serving_eci",
+
+        "neighbor_index",
+        "neighbor_tech",
+        "neighbor_arfcn",
+        "neighbor_pci",
+        "neighbor_rsrp",
+        "neighbor_rsrq",
+        "neighbor_sinr",
+
+        "lat",
+        "long"
+    )
+    fun addNeighborLteCsvRow(
+        sessionId: Int,
+        report: Int,
+
+        servingArfcn: Int?,
+        servingPci: Int?,
+        servingEci: Long?,
+
+        neighborIndex: Int,
+        neighborTech: String,
+        neighborArfcn: Int?,
+        neighborPci: Int?,
+        neighborRsrp: Int?,
+        neighborRsrq: Int?,
+        neighborSinr: Float?
+    ) {
+        if (!isRecordingNeighborCsv) return
+
+        val now = Date()
+        val sysTime =
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
+
+        val lat = latestLocation?.latitude?.toString() ?: ""
+        val lon = latestLocation?.longitude?.toString() ?: ""
+
+        val row = listOf(
+            sessionId.toString(),
+            sysTime,
+            report.toString(),
+
+            "LTE",
+            servingArfcn?.toString() ?: "",
+            servingPci?.toString() ?: "",
+            servingEci?.toString() ?: "",
+
+            neighborIndex.toString(),
+            neighborTech,
+            neighborArfcn?.toString() ?: "",
+            neighborPci?.toString() ?: "",
+            neighborRsrp?.toString() ?: "",
+            neighborRsrq?.toString() ?: "",
+            neighborSinr?.toString() ?: "",
+
+            lat,
+            lon
+        )
+
+        neighborLteCsvBuffer.add(row)
+    }
+
+    // ================== NEIGHBOR LTE CSV ==================
+    var isRecordingNeighborCsv = false
+    private val neighborLteCsvBuffer = mutableListOf<List<String>>()
+
+
+
     // ================== WIFI CSV ==================
     var isRecordingWifiCsv = false
     private val wifiCsvBuffer = mutableListOf<List<String>>()
