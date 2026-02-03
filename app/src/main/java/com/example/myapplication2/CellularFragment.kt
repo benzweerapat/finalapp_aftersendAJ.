@@ -84,13 +84,9 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
                 updateStatusIcons(tm) // ✅ เพิ่มบรรทัดนี้
 
-                val switch = mainActivity.findViewById<SwitchCompat>(R.id.scanSwitch)
-                if (switch != null && switch.isChecked) {
-                    updateCellularInfo()
-                    updateLocationAndSensors()
-                } else {
-                    resetUi()
-                }
+                updateCellularInfo()
+                updateLocationAndSensors()
+
                 handler.postDelayed(this, scanIntervalMs)
             }
         }
@@ -219,6 +215,25 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         btnEditFloorHeight?.isEnabled = enabled
         btnEditFloorHeight?.alpha = alpha
     }
+
+    fun setGroundButtonsVisible(visible: Boolean) {
+        val v = if (visible) View.VISIBLE else View.GONE
+        btnCalibrate?.visibility = v
+        btnReset?.visibility = v
+        btnEditFloorHeight?.visibility = v
+    }
+    fun showGroundUiAfterStart() {
+        // Barometer
+        textAltitude?.visibility = View.VISIBLE
+        textFloor?.visibility = View.VISIBLE
+        textBaroEstimated?.visibility = View.VISIBLE
+
+        // GPS
+        textGpsRelHeight?.visibility = View.VISIBLE
+        textGpsFloor?.visibility = View.VISIBLE
+        textGpsEstimated?.visibility = View.VISIBLE
+    }
+
 
     private fun showEditDialog() {
         val input = EditText(requireContext())

@@ -1,4 +1,5 @@
 package com.example.myapplication2
+import android.view.View
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -61,6 +62,8 @@ class MainActivity : AppCompatActivity() {
 
     // ================== CELLULAR CSV ==================
     var isRecordingCsv = false
+    var isGroundSet = false
+
 
     private val csvBuffer = mutableListOf<List<String>>()
     private fun requestLocationPermission() {
@@ -238,7 +241,7 @@ class MainActivity : AppCompatActivity() {
         val fileName = "Session_${session}_neighbor_${servingTechForFileName}_$timestamp.csv"
 
         // เรียกใช้ saveCsv ที่มีอยู่แล้วเพื่อความสะดวก
-        saveCsv(fileName, neighborCsvHeader, neighborCsvBuffer, "Cellular")
+        saveCsv(fileName, neighborCsvHeader, neighborCsvBuffer, "CellularNeighbor")
 
         // เคลียร์ข้อมูลทิ้งหลังบันทึกเสร็จ
         neighborCsvBuffer.clear()
@@ -492,14 +495,56 @@ class MainActivity : AppCompatActivity() {
                 // ค้นหาส่วน scanBtn.setOnClickListener ใน setupButtons()
                 is CellularFragment -> {
                     if (!isRecordingCsv) {
+
                         calibrateAltitude()
+                        toast("Ground set automatically")
+
+                        // 🔒 ซ่อน Set / Reset / EditFloor
+                        (fragment as? CellularFragment)?.setGroundButtonsVisible(false)
+
+                        // 👁️ แสดง Ground UI
+                        (fragment as? CellularFragment)?.showGroundUiAfterStart()
+
                         csvBuffer.clear()
-                        neighborCsvBuffer.clear() // ✅ เพิ่ม
-                        reportCounter = 1         // ✅ เริ่มที่ 1
+                        neighborCsvBuffer.clear()
+                        reportCounter = 1
                         isRecordingCsv = true
                         scanBtn.text = "STOP"
+
                     } else {
                         isRecordingCsv = false
+                        scanBtn.text = "START"
+
+                        saveCellularCsv()
+                        saveNeighborCsv()
+
+                        // 👁️ โชว์ปุ่มกลับเฉพาะตอน STOP
+                        (fragment as? CellularFragment)?.setGroundButtonsVisible(true)
+
+                        toast("All CSVs saved")
+                    }
+                }
+
+
+
+                // ================= WIFI =================
+                is WifiFragment -> {
+
+                    if (!isRecordingWifiCsv) {
+
+                        calibrateAltitude()
+                        toast("Ground set automatically")
+
+                        // 🔒 ซ่อน Set / Reset / EditFloor (ของ WiFiFragment)
+                        (fragment as? WifiFragment)?.setGroundButtonsVisible(false)
+                        (fragment as? WifiFragment)?.showGroundUiAfterStart()
+
+                        wifiCsvBuffer.clear()
+                        isRecordingWifiCsv = true
+                        scanBtn.text = "STOP"
+
+                    } else {
+                        isRecordingWifiCsv = false
                         scanBtn.text = "START"
 
                         if (!canWriteLegacyStorage()) {
@@ -507,40 +552,28 @@ class MainActivity : AppCompatActivity() {
                             return@setOnClickListener
                         }
 
-                        saveCellularCsv()  // บันทึกไฟล์ Serving
-                        saveNeighborCsv()  // ✅ บันทึกไฟล์ Neighbor ต่อท้ายทันที
+                        saveWifiCsv(fragment.getCurrentSsid())
+                        saveWifiNeighborCsv()
+
+                        // 👁️ โชว์ปุ่มกลับ
+                        (fragment as? WifiFragment)?.setGroundButtonsVisible(true)
+
                         toast("All CSVs saved")
                     }
                 }
 
-                // ================= WIFI =================
-                is WifiFragment -> {
 
-                    if (!isRecordingWifiCsv) {
-                        calibrateAltitude()
-                        wifiCsvBuffer.clear()
-                        isRecordingWifiCsv = true
-
-                        scanBtn.text = "STOP"
-                        toast("WiFi logging started")
-
-                    } else {
-                        isRecordingWifiCsv = false
-                        scanBtn.text = "START"
-                        // ⬇️ วางตรงนี้
-                        if (!canWriteLegacyStorage()) {
-                            toast("Storage permission required to save CSV")
-                            return@setOnClickListener
-                        }
-
-                        saveWifiCsv(fragment.getCurrentSsid())
-                        saveWifiNeighborCsv()   // ✅ เพิ่มบรรทัดนี้
-                        toast("WiFi CSV + Neighbor CSV saved")
-                    }
-                }
             }
         }
     }
+    fun setGroundButtonsVisible(visible: Boolean) {
+        val v = if (visible) View.VISIBLE else View.GONE
+
+        // ❗ ID ต้องตรงกับปุ่มจริงใน layout
+        findViewById<View>(R.id.btnCalibrate)?.visibility = v
+        findViewById<View>(R.id.btnReset)?.visibility = v
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -727,26 +760,97 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStartButtonState() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
+        val hint = findViewById<TextView>(R.id.startHintText)
 
-        // ถ้ากำลังอัด → ต้องกดได้เสมอ (เพื่อ STOP)
+        // ถ้ากำลังอัด → START ต้องกดได้ และไม่ต้องมีข้อความเตือน
         if (isRecordingCsv || isRecordingWifiCsv) {
             scanBtn.isEnabled = true
             scanBtn.alpha = 1f
+            hint.visibility = View.GONE
             return
         }
 
         val fragment =
             supportFragmentManager.findFragmentById(R.id.fragment_container)
 
-        val ready = when (fragment) {
-            is CellularFragment -> isReadyToStart()
-            is WifiFragment -> isReadyToStartWifi()
-            else -> false
-        }
+        when (fragment) {
 
-        scanBtn.isEnabled = ready
-        scanBtn.alpha = if (ready) 1f else 0.4f
+            is CellularFragment -> {
+                val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+                val gpsOn = try {
+                    lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                } catch (_: Exception) { false }
+
+                val inService =
+                    tm.serviceState?.state == ServiceState.STATE_IN_SERVICE
+
+                when {
+                    !gpsOn -> {
+                        scanBtn.isEnabled = false
+                        scanBtn.alpha = 0.4f
+                        hint.text = "Please turn on GPS"
+                        hint.visibility = View.VISIBLE
+                    }
+
+                    !inService -> {
+                        scanBtn.isEnabled = false
+                        scanBtn.alpha = 0.4f
+                        hint.text = "Cellular service not ready"
+                        hint.visibility = View.VISIBLE
+                    }
+
+                    else -> {
+                        scanBtn.isEnabled = true
+                        scanBtn.alpha = 1f
+                        hint.visibility = View.GONE
+                    }
+                }
+            }
+
+            is WifiFragment -> {
+                val wifiManager =
+                    applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+                val wifiOn = wifiManager.isWifiEnabled
+                val gpsOn = try {
+                    lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                } catch (_: Exception) { false }
+
+                when {
+                    !wifiOn -> {
+                        scanBtn.isEnabled = false
+                        scanBtn.alpha = 0.4f
+                        hint.text = "Please turn on Wi-Fi"
+                        hint.visibility = View.VISIBLE
+                    }
+
+                    !gpsOn -> {
+                        scanBtn.isEnabled = false
+                        scanBtn.alpha = 0.4f
+                        hint.text = "Please turn on GPS"
+                        hint.visibility = View.VISIBLE
+                    }
+
+                    else -> {
+                        scanBtn.isEnabled = true
+                        scanBtn.alpha = 1f
+                        hint.visibility = View.GONE
+                    }
+                }
+            }
+
+            else -> {
+                scanBtn.isEnabled = false
+                scanBtn.alpha = 0.4f
+                hint.visibility = View.GONE
+            }
+        }
     }
+
 
 
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -841,6 +945,7 @@ class MainActivity : AppCompatActivity() {
         header: List<String>,
         rows: List<List<String>>,
         subDir: String
+
     ) {
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -921,10 +1026,15 @@ class MainActivity : AppCompatActivity() {
 
     // ================== UTILS ==================
     fun calibrateAltitude() {
-        if (currentFilteredPressure > 0) referencePressure = currentFilteredPressure
-        if (latestLocation?.hasAltitude() == true)
+        if (currentFilteredPressure > 0) {
+            referencePressure = currentFilteredPressure
+        }
+        if (latestLocation?.hasAltitude() == true) {
             referenceGpsAltitude = latestLocation!!.altitude
+        }
+        isGroundSet = true
     }
+
 
     private fun startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)

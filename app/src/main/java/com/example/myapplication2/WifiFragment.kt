@@ -99,11 +99,32 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         }
     }
 
+
+    fun setGroundButtonsVisible(visible: Boolean) {
+        val v = if (visible) View.VISIBLE else View.GONE
+        btnCalibrate?.visibility = v
+        btnReset?.visibility = v
+        btnEditFloorHeight?.visibility = v
+    }
+
+
     private fun stopWifiBlink() {
         wifiBlinkAnimator?.cancel()
         wifiBlinkAnimator = null
         iconWifi?.alpha = 1f
     }
+    fun showGroundUiAfterStart() {
+        // Barometer
+        textAltitude?.visibility = View.VISIBLE
+        textFloor?.visibility = View.VISIBLE
+        textBaroEstimated?.visibility = View.VISIBLE
+
+        // GPS
+        textGpsRelHeight?.visibility = View.VISIBLE
+        textGpsFloor?.visibility = View.VISIBLE
+        textGpsEstimated?.visibility = View.VISIBLE
+    }
+
 
 
 
@@ -304,22 +325,17 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             val isConnected = info != null && info.networkId != -1
             updateStatusIcons(isConnected)
 
-            val sw = activity?.findViewById<SwitchCompat>(R.id.scanSwitch)
-
             when {
                 !isLocationEnabled() -> {
                     clearWifiUi()
                     wifiSsid?.text = "Location OFF"
                 }
-                sw?.isChecked == true -> {
+                else -> {
                     scanWifi()
                     updateAltitudeInfo()
                 }
-                else -> {
-                    clearWifiUi()
-                    wifiSsid?.text = "Stop scan"
-                }
             }
+
 
             handler.postDelayed(this, 1000)
         }
