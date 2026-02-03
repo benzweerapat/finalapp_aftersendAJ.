@@ -37,6 +37,9 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         private const val NA = "-"
     }
 
+    private var textGpsEstimated: TextView? = null
+
+
     private lateinit var mainActivity: MainActivity
     private lateinit var wifiManager: WifiManager
     private lateinit var wifiScanReceiver: BroadcastReceiver
@@ -67,6 +70,9 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private var textGpsFloor: TextView? = null
     private var textGpsRelHeight: TextView? = null
     private var textGpsAltitude: TextView? = null
+    // estimated level labels
+    private var textBaroEstimated: TextView? = null
+
 
     // Buttons
     private lateinit var btnCalibrate: View
@@ -176,6 +182,10 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         textGpsRelHeight = view.findViewById(R.id.textGpsRelHeight)
         textGpsAltitude = view.findViewById(R.id.textGpsAltitude)
 
+        textBaroEstimated = view.findViewById(R.id.textBaroEstimated)
+        textGpsEstimated = view.findViewById(R.id.textGpsEstimated)
+
+
         // Buttons
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
@@ -198,18 +208,59 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
 
         btnCalibrate.setOnClickListener {
             mainActivity.calibrateAltitude()
-            Toast.makeText(requireContext(), "Set Ground completed", Toast.LENGTH_SHORT).show()
+
+            // Barometer
+            textAltitude?.visibility = View.VISIBLE
+            textFloor?.visibility = View.VISIBLE
+
+            // GPS
+            textGpsRelHeight?.visibility = View.VISIBLE
+            textGpsFloor?.visibility = View.VISIBLE
+            textBaroEstimated?.visibility = View.VISIBLE
+            textGpsEstimated?.visibility = View.VISIBLE
+
+
+            mainActivity.toast("Ground Set")
         }
 
         btnReset.setOnClickListener {
+            // 1️⃣ ล้าง reference
             mainActivity.referencePressure = -1f
             mainActivity.referenceGpsAltitude = null
-            updateAltitudeInfo()
-            Toast.makeText(requireContext(), "Reset completed", Toast.LENGTH_SHORT).show()
-        }
 
-        btnEditFloorHeight.setOnClickListener {
-            Toast.makeText(requireContext(), "Edit floor height clicked", Toast.LENGTH_SHORT).show()
+            // =====================
+            // 2️⃣ Barometer UI
+            // =====================
+            // แสดง Pressure อย่างเดียว
+            textPressure?.visibility = View.VISIBLE
+            textPressure?.text =
+                "Pressure: %.2f hPa".format(mainActivity.currentFilteredPressure)
+
+            // ❌ ซ่อน Rel / Floor
+            textAltitude?.visibility = View.GONE
+            textFloor?.visibility = View.GONE
+            // ซ่อน estimated level
+            textBaroEstimated?.visibility = View.GONE
+            textGpsEstimated?.visibility = View.GONE
+
+
+            // =====================
+            // 3️⃣ GPS UI
+            // =====================
+            // แสดง Abs. Alt อย่างเดียว
+            val loc = mainActivity.latestLocation
+            textGpsAltitude?.visibility = View.VISIBLE
+            textGpsAltitude?.text =
+                if (loc != null && loc.hasAltitude())
+                    "Abs. Alt: %.1f m".format(loc.altitude)
+                else
+                    "Abs. Alt: -"
+
+            // ❌ ซ่อน Rel / Floor
+            textGpsRelHeight?.visibility = View.GONE
+            textGpsFloor?.visibility = View.GONE
+
+            mainActivity.toast("Reset Height")
         }
     }
 
@@ -276,7 +327,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private fun recordWifiNeighbors(results: List<ScanResult>) {
         if (mainActivity.isRecordingWifiCsv) {
             // ใช้เลข Report ล่าสุดจาก MainActivity
-            val reportId = mainActivity.getNextReportId()
+            val reportId = mainActivity.currentWifiReportId
+
             val now = Date()
             val sysTime =
                 SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
@@ -295,6 +347,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                     val nRow = mutableListOf<String>()
                     nRow.add(reportId.toString()) // ✅
                     nRow.add(nIdx.toString())
+                    nRow.add(sysTime)
                     nRow.add(currentSsid)
                     nRow.add(res.SSID)
                     nRow.add(res.BSSID)
@@ -303,7 +356,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                     nRow.add(res.capabilities)
                     nRow.add(loc?.latitude?.toString() ?: "")
                     nRow.add(loc?.longitude?.toString() ?: "")
-                    nRow.add(sysTime)
+
 
                     mainActivity.addWifiNeighborCsvRow(nRow)
                     nIdx++
@@ -359,10 +412,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             }
         }
     }
-
-
     /* ================= Core ================= */
-
     @SuppressLint("MissingPermission")
     private fun scanWifi() {
 
@@ -456,6 +506,9 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 wifiSecurity?.text = scan.capabilities
             }
         }
+        // 🔒 กำหนด report ครั้งนี้
+        mainActivity.currentWifiReportId = mainActivity.getNextReportId()
+
 
         mainActivity.addWifiCsvRow(
             ssid = currentSsid,
@@ -469,6 +522,9 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             signalQual = rssiToQuality(rssi),
             speed = mainActivity.latestLocation?.speed
         )
+
+
+
 
     }
     private fun hasWifiPermission(): Boolean {
@@ -571,7 +627,13 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 .sortedByDescending { it.level }
                 .take(50)
         )
+        // 1️⃣ เขียน Neighbor (ใช้ report เดียวกับ Serving)
         recordWifiNeighbors(results)
+
+        // 2️⃣ ปิดรอบ → ค่อย increment
+        if (mainActivity.isRecordingWifiCsv) {
+            mainActivity.incrementReportCounter()
+        }
     }
 
 

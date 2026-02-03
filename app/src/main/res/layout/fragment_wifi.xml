@@ -446,12 +446,14 @@
                             android:textStyle="bold"
                             android:textColor="#22C55E" />
                         <TextView
+                            android:id="@+id/textBaroEstimated"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="estimated level"
                             android:textColor="#22C55E"
                             android:textSize="11sp"
                             android:layout_marginBottom="4dp"/>
+
 
                         <TextView
                             android:id="@+id/textAltitude"
@@ -501,12 +503,14 @@
                             android:textStyle="bold"
                             android:textColor="#22C55E"/>
                         <TextView
+                            android:id="@+id/textGpsEstimated"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="estimated level"
                             android:textColor="#22C55E"
                             android:textSize="11sp"
                             android:layout_marginBottom="4dp"/>
+
 
                         <TextView
                             android:id="@+id/textGpsRelHeight"

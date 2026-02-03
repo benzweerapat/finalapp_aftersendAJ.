@@ -57,6 +57,10 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
     private var textGpsFloor: TextView? = null
     private var textGpsRelHeight: TextView? = null
     private var textGpsAltitude: TextView? = null
+    // estimated level labels
+    private var textBaroEstimated: TextView? = null
+
+
 
     // Extra UI
     private var taValue: TextView? = null
@@ -69,6 +73,8 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
     private var btnCalibrate: View? = null
     private var btnReset: View? = null
     private var btnEditFloorHeight: View? = null
+    private var textGpsEstimated: TextView? = null
+
 
     private val scanRunnable = object : Runnable {
         override fun run() {
@@ -119,6 +125,10 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         textGpsRelHeight = view.findViewById(R.id.textGpsRelHeight)
         textGpsAltitude = view.findViewById(R.id.textGpsAltitude)
 
+        textBaroEstimated = view.findViewById(R.id.textBaroEstimated)
+        textGpsEstimated = view.findViewById(R.id.textGpsEstimated)
+
+
         taValue = view.findViewById(R.id.taValue)
         rssnrValue = view.findViewById(R.id.rssnrValue)
         bwValue = view.findViewById(R.id.bwValue)
@@ -131,13 +141,60 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
         btnCalibrate?.setOnClickListener {
             mainActivity.calibrateAltitude()
+
+            // Barometer
+            textAltitude?.visibility = View.VISIBLE
+            textFloor?.visibility = View.VISIBLE
+            textBaroEstimated?.visibility = View.VISIBLE
+            textGpsEstimated?.visibility = View.VISIBLE
+
+
+            // GPS
+            textGpsRelHeight?.visibility = View.VISIBLE
+            textGpsFloor?.visibility = View.VISIBLE
+
             mainActivity.toast("Ground Set")
         }
 
         btnReset?.setOnClickListener {
+            // 1️⃣ ล้าง reference
             mainActivity.referencePressure = -1f
             mainActivity.referenceGpsAltitude = null
+
+            // =====================
+            // 2️⃣ Barometer UI
+            // =====================
+            // แสดง Pressure อย่างเดียว
+            textPressure?.visibility = View.VISIBLE
+            textPressure?.text =
+                "Pressure: %.2f hPa".format(mainActivity.currentFilteredPressure)
+
+            // ❌ ซ่อน Rel / Floor
+            textAltitude?.visibility = View.GONE
+            textFloor?.visibility = View.GONE
+            // ซ่อน estimated level
+            textBaroEstimated?.visibility = View.GONE
+            textGpsEstimated?.visibility = View.GONE
+
+
+            // =====================
+            // 3️⃣ GPS UI
+            // =====================
+            // แสดง Abs. Alt อย่างเดียว
+            val loc = mainActivity.latestLocation
+            textGpsAltitude?.visibility = View.VISIBLE
+            textGpsAltitude?.text =
+                if (loc != null && loc.hasAltitude())
+                    "Abs. Alt: %.1f m".format(loc.altitude)
+                else
+                    "Abs. Alt: -"
+
+            // ❌ ซ่อน Rel / Floor
+            textGpsRelHeight?.visibility = View.GONE
+            textGpsFloor?.visibility = View.GONE
+
             mainActivity.toast("Reset Height")
+
         }
 
         btnEditFloorHeight?.setOnClickListener {
@@ -485,6 +542,7 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                     nRow.add(reportId.toString()) // ✅
 
                     nRow.add(nIdx.toString())
+                    nRow.add(sysTime)
                     nRow.add(sTech); nRow.add(sArfcn); nRow.add(sPci); nRow.add(sCid)
 
                     when (ci) {
@@ -518,7 +576,7 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
                     nRow.add(loc?.latitude?.toString() ?: "")
                     nRow.add(loc?.longitude?.toString() ?: "")
-                    nRow.add(sysTime)
+
 
                     mainActivity.addNeighborCsvRow(nRow)
                     nIdx++

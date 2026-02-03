@@ -205,12 +205,13 @@ class MainActivity : AppCompatActivity() {
     )
     // 1. Header สำหรับ Neighbor CSV
     val neighborCsvHeader = listOf(
-        "report", "neighbor_index",
+        "report", "neighbor_index","sys_time",
         "serving_tech", "serving_arfcn", "serving_pci", "serving_cell_id",
         "neighbor_tech", "neighbor_arfcn", "neighbor_pci", "neighbor_rsrp",
         "neighbor_rsrq", "neighbor_sinr",
-        "latitude", "longitude", "timestamp"
+        "latitude", "longitude"
     )
+    var currentWifiReportId: Int = 0
 
     // 2. Buffer สำหรับเก็บข้อมูลแถวของ Neighbor
     private val neighborCsvBuffer = mutableListOf<List<String>>()
@@ -651,9 +652,9 @@ class MainActivity : AppCompatActivity() {
     }
     // ส่วน Header (แนะนำให้ประกาศเป็นตัวแปร global หรือในฟังก์ชัน save)
     val wifiNeighborHeader = listOf(
-        "report", "neighbor_index", "connected_ssid", "neighbor_ssid",
+        "report", "neighbor_index","sys_time", "connected_ssid", "neighbor_ssid",
         "neighbor_bssid", "neighbor_level", "neighbor_freq",
-        "capabilities", "lat", "long", "sys_time"
+        "capabilities", "lat", "long"
     )
 
     // เพิ่มใน MainActivity.kt
