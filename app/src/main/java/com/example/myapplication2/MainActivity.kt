@@ -36,6 +36,8 @@ import android.telephony.TelephonyManager
 import android.telephony.ServiceState
 import android.os.Handler
 import android.os.Looper
+import android.telephony.CellInfoLte
+import android.telephony.CellInfoNr
 
 
 
@@ -238,11 +240,15 @@ class MainActivity : AppCompatActivity() {
 
         // ใช้ค่า Session ล่าสุด (ลบ 1 เพราะ cellularSessionCounter มักจะถูกบวกเพิ่มไปแล้วใน saveCellularCsv)
         val session = cellularSessionCounter - 1
-        val fileName = "Session_${session}_neighbor_${servingTechForFileName}_$timestamp.csv"
+        val fileName = "Session_${session}_Neighbor_$timestamp.csv"
 
-        // เรียกใช้ saveCsv ที่มีอยู่แล้วเพื่อความสะดวก
-        saveCsv(fileName, neighborCsvHeader, neighborCsvBuffer, "CellularNeighbor")
-
+        // ✅ แก้ตรงนี้บรรทัดเดียว
+        saveCsv(
+            fileName,
+            neighborCsvHeader,
+            neighborCsvBuffer,
+            "Cellular"
+        )
         // เคลียร์ข้อมูลทิ้งหลังบันทึกเสร็จ
         neighborCsvBuffer.clear()
     }
@@ -902,7 +908,7 @@ class MainActivity : AppCompatActivity() {
 
         val now = Date()
         val name = ssid.replace(Regex("[^a-zA-Z0-9_]"), "_")
-        val fileName = "Session_${wifiSessionCounter}_SSID${name}_" +
+        val fileName = "Session_${wifiSessionCounter}_WIFI_SERV_${name}_" +
                 SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) + "_CSV.csv"
 
         saveCsv(fileName, wifiCsvHeader, wifiCsvBuffer, "Wifi")
@@ -916,7 +922,7 @@ class MainActivity : AppCompatActivity() {
 
         val now = Date()
         val fileName =
-            "Session_${wifiSessionCounter - 1}_WifiNeighbor_" +
+            "Session_${wifiSessionCounter - 1}_WIFI_NEI_" +
                     SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) +
                     ".csv"
 
@@ -933,7 +939,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun saveCellularCsv() {
         val now = Date()
-        val fileName = "Session_${cellularSessionCounter}_" +
+        val fileName = "Session_${cellularSessionCounter}_Serving_" +
                 SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) + "_CSV.csv"
 
         saveCsv(fileName, csvHeader, csvBuffer, "Cellular")
@@ -1034,6 +1040,49 @@ class MainActivity : AppCompatActivity() {
         }
         isGroundSet = true
     }
+    //เพิ่มฟังก์ชันตรวจ LTE CA
+    @SuppressLint("MissingPermission")
+    fun isLteCaActiveCompat(): Boolean {
+        // 1. ดึง TelephonyManager เพื่อเข้าถึงข้อมูลเครือข่าย
+        val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        // 2. ดึง ServiceState (สถานะการบริการปัจจุบัน) ถ้าไม่มีค่า (null) ให้จบและตอบ false
+        val ss = tm.serviceState ?: return false
+
+        return try {
+            // --- ส่วนที่ 3: ตรวจสอบตามเวอร์ชัน Android ---
+            // กรณี Android 10 (Q) ขึ้นไป (Android 10, 11, 12, 13, 14+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // 3.1 ค้นหาฟังก์ชันชื่อ "isUsingCarrierAggregation" ในคลาส ServiceState
+                val m = ServiceState::class.java.getMethod("isUsingCarrierAggregation")
+                // 3.2 สั่งรันฟังก์ชันนั้น แล้วแปลงผลลัพธ์เป็น Boolean
+                m.invoke(ss) as Boolean
+            }
+            // กรณี Android 8 (O) ถึง 9 (P)
+            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // 4.1 ค้นหาตัวแปร (Field) ที่ซ่อนอยู่ชื่อ "mIsUsingCarrierAggregation"
+                val f = ss.javaClass.getDeclaredField("mIsUsingCarrierAggregation")
+                // 4.2 อนุญาตให้เข้าถึงตัวแปรนี้ได้ (แม้ว่ามันจะเป็น private)
+                f.isAccessible = true
+                // 4.3 ดึงค่า boolean ออกมาจากตัวแปรนั้น
+                f.getBoolean(ss)
+            }
+            // กรณี Android 7 ลงไป (ไม่รองรับการเช็คด้วยวิธีนี้
+            else {
+                false
+            }
+        } catch (e: Exception) {
+            // หากเกิด error (เช่น หาชื่อฟังก์ชันไม่เจอใน ROM บางยี่ห้อ) ให้ตอบ false
+            false
+        }
+    }
+    @SuppressLint("MissingPermission")
+    fun getLteCaCount(): Int {
+        val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+        return tm.allCellInfo
+            ?.count { it is android.telephony.CellInfoLte && it.isRegistered }
+            ?: 0
+    }
+
 
 
     private fun startLocationUpdates() {

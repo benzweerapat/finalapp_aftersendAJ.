@@ -352,8 +352,19 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                     val ss = ci.cellSignalStrength
                     val earfcn = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) id.earfcn else null
 
-                    techLabel?.text = lteBandLabel(earfcn)
-                    bandLabel?.text = "LTE"
+                    val isCa = mainActivity.isLteCaActiveCompat()
+
+                    // 🔹 tech = ระบบ
+                    techLabel?.text =
+                        if (isCa) "LTE CA"
+                        else "LTE"
+
+                    // 🔹 band = คลื่น
+                    bandLabel?.text =
+                        if (isCa) "${lteBandLabel(earfcn)}"
+                        else lteBandLabel(earfcn)
+
+
                     rsrpValue?.text = "${ss.rsrp} dBm"
                     rsrqValue?.text = "${ss.rsrq} dB"
                     arfcnValue?.text = earfcn?.toString() ?: "—"
@@ -382,7 +393,9 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                         Pair(id.mccString ?: "—", id.mncString ?: "—") else fallbackMccMnc(tm)
                     cellIdBlock?.text = "MCC MNC: $mccStr $mncStr  •  TAC: ${id.tac}  •  PCI: ${id.pci}"
 
-                    techCsv = "LTE"; bandCsv = lteBandNumber(earfcn)
+                    techCsv =
+                        if (mainActivity.isLteCaActiveCompat()) "LTE_CA"
+                        else "LTE"
                     rsrpStr = "${ss.rsrp}"; rsrqStr = "${ss.rsrq}"; arfcnStr = "${earfcn ?: ""}"
                     mcc = mccStr; mnc = mncStr
                     lacTac = "${id.tac}"; longCid = "${id.ci}"; pscPci = "${id.pci}"
