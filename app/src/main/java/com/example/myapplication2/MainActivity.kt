@@ -1120,7 +1120,7 @@ class MainActivity : AppCompatActivity() {
         isGroundSet = true
         updateFloorButtonLabel()
     }
-    //เพิ่มฟังก์ชันตรวจ LTE CA
+    //เพิ่มฟังก์ชันตรวจ LTE CAnnn
     @SuppressLint("MissingPermission")
     fun isLteCaActiveCompat(): Boolean {
         // 1. ดึง TelephonyManager เพื่อเข้าถึงข้อมูลเครือข่าย
