@@ -53,7 +53,8 @@
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textColor="#F87171"
-                android:textSize="12sp"
+                android:textSize="20sp"
+                android:textStyle="bold"
                 android:visibility="gone"
                 android:layout_marginTop="6dp"/>
         </LinearLayout>
@@ -69,22 +70,24 @@
             android:gravity="center_vertical">
 
             <!-- ปุ่มเลือกชั้น -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSelectFloor"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
+                android:layout_height="48dp"
                 android:text="Floor 1"
                 android:textAllCaps="false"
                 android:drawableEnd="@drawable/ic_expand_more_16"
                 android:drawablePadding="6dp"
-                android:textSize="12sp"
+                android:textSize="16sp"
                 android:textColor="#FFFFFF"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:cornerRadius="20dp"
-                android:layout_marginEnd="8dp"/>
+                app:cornerRadius="24dp"
+                android:layout_marginEnd="8dp"
+                app:strokeColor="#D1D5DB"
+                app:strokeWidth="1dp"/>
 
             <!-- ปุ่ม START -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/saveCsvButton"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
