@@ -28,7 +28,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
+                android:gravity="top"
                 android:padding="16dp">
 
                 <LinearLayout
@@ -68,7 +68,7 @@
                         android:layout_height="wrap_content"
                         android:text="RSSI"
                         android:textColor="#80FFFFFF"
-                        android:textSize="10sp"/>
+                        android:textSize="8sp"/>
 
                     <TextView
                         android:id="@+id/wifiRssi"
@@ -379,7 +379,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical"
+                android:gravity="top"
                 android:padding="16dp">
 
                 <TextView
@@ -537,23 +537,23 @@
 
                     <LinearLayout
                         android:layout_width="0dp"
-                        android:layout_height="match_parent"
+                        android:layout_height="wrap_content"
                         android:layout_weight="1.1"
                         android:orientation="vertical"
                         android:paddingStart="8dp"
-                        android:gravity="center_vertical">
+                        android:gravity="top">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnCalibrate"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="36dp"
+                            android:layout_height="30dp"
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:text="Set Ground"
                             android:textAllCaps="false"
-                            android:textSize="10sp"
+                            android:textSize="9sp"
                             android:maxLines="1"
                             android:ellipsize="end"
                             android:paddingStart="8dp"
@@ -567,14 +567,14 @@
                             android:id="@+id/btnReset"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="36dp"
+                            android:layout_height="30dp"
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginTop="4dp"
                             android:text="Reset"
                             android:textAllCaps="false"
-                            android:textSize="10sp"
+                            android:textSize="9sp"
                             android:maxLines="1"
                             android:ellipsize="end"
                             android:paddingStart="8dp"
@@ -588,11 +588,11 @@
                             android:id="@+id/btnEditFloorHeight"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
-                            android:layout_height="32dp"
+                            android:layout_height="28dp"
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:layout_marginTop="6dp"
+                            android:layout_marginTop="4dp"
                             android:text="Edit Height"
                             android:textAllCaps="false"
                             android:textSize="9sp"
