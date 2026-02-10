@@ -457,6 +457,10 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun updateFloorButtonLabel() {
+        findViewById<Button>(R.id.btnSelectFloor)?.text = "Floor $startFloor"
+    }
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
@@ -470,8 +474,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             showStartFloorDialog { floor ->
-                startFloor = floor
-                btnSelectFloor.text = "Floor $floor"
+                calibrateAltitude(floor)
                 toast("Selected floor: $floor")
             }
         }
@@ -1115,6 +1118,7 @@ class MainActivity : AppCompatActivity() {
         }
         startFloor = selectedStartFloor
         isGroundSet = true
+        updateFloorButtonLabel()
     }
     //เพิ่มฟังก์ชันตรวจ LTE CA
     @SuppressLint("MissingPermission")
