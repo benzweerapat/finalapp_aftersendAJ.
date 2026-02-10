@@ -429,6 +429,38 @@ class MainActivity : AppCompatActivity() {
 
 
 
+
+    private fun showStartFloorDialog(onConfirm: (Int) -> Unit) {
+
+        val floors = arrayOf("1", "2", "3", "4", "5", "Custom")
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Select start floor")
+            .setItems(floors) { _, which ->
+                if (floors[which] != "Custom") {
+                    onConfirm(floors[which].toInt())
+                } else {
+                    val input = android.widget.EditText(this)
+                    input.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+
+                    androidx.appcompat.app.AlertDialog.Builder(this)
+                        .setTitle("Enter floor number")
+                        .setView(input)
+                        .setPositiveButton("OK") { _, _ ->
+                            val v = input.text.toString().toIntOrNull()
+                            if (v != null) onConfirm(v)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+            }
+            .show()
+    }
+
+    private fun updateFloorButtonLabel() {
+        findViewById<Button>(R.id.btnSelectFloor)?.text = "Floor $startFloor"
+    }
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
@@ -436,27 +468,14 @@ class MainActivity : AppCompatActivity() {
         val btnSelectFloor =
             findViewById<Button>(R.id.btnSelectFloor)
         btnSelectFloor.setOnClickListener {
+            if (isRecordingCsv || isRecordingWifiCsv) {
+                toast("Stop recording before changing floor")
+                return@setOnClickListener
+            }
 
-            val fragment =
-                supportFragmentManager.findFragmentById(R.id.fragment_container)
-
-            when (fragment) {
-
-                is CellularFragment -> {
-                    fragment.showStartFloorDialog { floor ->
-                        startFloor = floor
-                        btnSelectFloor.text = "Floor $floor"
-                        toast("Selected floor: $floor")
-                    }
-                }
-
-                is WifiFragment -> {
-                    fragment.showStartFloorDialog { floor ->
-                        startFloor = floor
-                        btnSelectFloor.text = "Floor $floor"
-                        toast("Selected floor: $floor")
-                    }
-                }
+            showStartFloorDialog { floor ->
+                calibrateAltitude(floor)
+                toast("Selected floor: $floor")
             }
         }
         findViewById<ImageView>(R.id.btnMenu).setOnClickListener { view ->
@@ -537,7 +556,7 @@ class MainActivity : AppCompatActivity() {
                     if (!isRecordingCsv) {
 
                         // 👉 1) ถามชั้นเริ่มต้นก่อน
-                        cellFrag.showStartFloorDialog { startFloor ->
+                        showStartFloorDialog { startFloor ->
 
                             // 👉 2) ค่อย calibrate
                             calibrateAltitude(startFloor)
@@ -581,7 +600,7 @@ class MainActivity : AppCompatActivity() {
 
                         val fragment = fragment as WifiFragment
 
-                        fragment.showStartFloorDialog { selectedFloor ->
+                        showStartFloorDialog { selectedFloor ->
 
                             calibrateAltitude(selectedFloor)
                             toast("Start floor = $selectedFloor")
@@ -693,7 +712,7 @@ class MainActivity : AppCompatActivity() {
                 1 / 5.255
             ))
             baroRelAlt = "%.2f".format(h)
-            baroFloor = ((h / floorHeightMeters).roundToInt() + 1).toString()
+            baroFloor = (startFloor + (h / floorHeightMeters).roundToInt()).toString()
         }
 
         // ===== GPS =====
@@ -702,7 +721,7 @@ class MainActivity : AppCompatActivity() {
         if (loc != null && referenceGpsAltitude != null && loc.hasAltitude()) {
             val rel = loc.altitude - referenceGpsAltitude!!
             gpsRelAlt = "%.2f".format(rel)
-            gpsFloor = ((rel / floorHeightMeters).roundToInt() + 1).toString()
+            gpsFloor = (startFloor + (rel / floorHeightMeters).roundToInt()).toString()
         }
 
         val row = listOf(
@@ -1099,6 +1118,7 @@ class MainActivity : AppCompatActivity() {
         }
         startFloor = selectedStartFloor
         isGroundSet = true
+        updateFloorButtonLabel()
     }
     //เพิ่มฟังก์ชันตรวจ LTE CA
     @SuppressLint("MissingPermission")
