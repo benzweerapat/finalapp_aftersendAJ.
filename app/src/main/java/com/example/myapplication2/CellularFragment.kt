@@ -301,11 +301,22 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         handler.removeCallbacks(scanRunnable)
     }
 
+
+    private fun applyServingRsrpColor(rsrp: Int?) {
+        rsrpValue?.setTextColor(
+            when {
+                rsrp == null -> Color.WHITE
+                else -> colorForRsrp(rsrp)
+            }
+        )
+    }
+
     private fun resetUi() {
         bandLabel?.text = "—"
         techLabel?.text = "—"
         operatorValue?.text = "—"
-        rsrpValue?.text = "—"; rsrpValue?.setTextColor(Color.WHITE)
+        rsrpValue?.text = "—"
+        applyServingRsrpColor(null)
         rsrqValue?.text = "—"
         arfcnValue?.text = "—"
         freqBwValue?.text = "—"
@@ -403,7 +414,9 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                         else lteBandLabel(earfcn)
 
 
-                    rsrpValue?.text = "${ss.rsrp} dBm"
+                    val servingRsrp = ss.rsrp.takeIf { it != Int.MAX_VALUE }
+                    rsrpValue?.text = servingRsrp?.let { "$it dBm" } ?: "—"
+                    applyServingRsrpColor(servingRsrp)
                     rsrqValue?.text = "${ss.rsrq} dB"
                     arfcnValue?.text = earfcn?.toString() ?: "—"
 
@@ -447,7 +460,9 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
                         techLabel?.text = nrBandLabel(nrarfcn)
                         bandLabel?.text = "NR"
-                        rsrpValue?.text = "${ss.ssRsrp} dBm"
+                        val servingRsrp = ss.ssRsrp.takeIf { it != Int.MAX_VALUE }
+                        rsrpValue?.text = servingRsrp?.let { "$it dBm" } ?: "—"
+                        applyServingRsrpColor(servingRsrp)
                         rsrqValue?.text = "${ss.ssRsrq} dB"
                         arfcnValue?.text = nrarfcn?.toString() ?: "—"
 
