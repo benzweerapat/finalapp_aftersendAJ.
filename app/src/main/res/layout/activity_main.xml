@@ -73,7 +73,7 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSelectFloor"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
+                android:layout_height="40dp"
                 android:text="Floor 1"
                 android:textAllCaps="false"
                 android:drawableEnd="@drawable/ic_expand_more_16"
@@ -81,7 +81,7 @@
                 android:textSize="16sp"
                 android:textColor="#FFFFFF"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:cornerRadius="24dp"
+                app:cornerRadius="20dp"
                 android:layout_marginEnd="8dp"
                 app:strokeColor="#D1D5DB"
                 app:strokeWidth="1dp"/>
