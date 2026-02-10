@@ -1,4 +1,6 @@
 package com.example.myapplication2
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.view.View
 
 import android.Manifest
@@ -69,6 +71,7 @@ class MainActivity : AppCompatActivity() {
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
     private var currentWifiSessionId: Int? = null
+    private var startHintAnimator: ObjectAnimator? = null
 
 
 
@@ -284,6 +287,7 @@ class MainActivity : AppCompatActivity() {
         // โซนที่ 2: สร้างหน้าจอ (Init UI & Fragments)
         // -------------------------------------------------
         setupButtons()
+        updateFloorButtonVisibility()
 
         if (savedInstanceState == null) {
             // วาง Fragment หลังจากตัวแปร (โซน 1) พร้อมแล้ว
@@ -461,6 +465,33 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSelectFloor)?.text = "Floor $startFloor"
     }
 
+    private fun updateFloorButtonVisibility() {
+        val isRecording = isRecordingCsv || isRecordingWifiCsv
+        findViewById<View>(R.id.btnSelectFloor)?.visibility =
+            if (isRecording) View.GONE else View.VISIBLE
+    }
+
+    private fun setStartHint(message: String?) {
+        val hint = findViewById<TextView>(R.id.startHintText)
+        if (message.isNullOrBlank()) {
+            startHintAnimator?.cancel()
+            hint.alpha = 1f
+            hint.visibility = View.GONE
+            return
+        }
+
+        hint.text = message
+        hint.visibility = View.VISIBLE
+
+        startHintAnimator?.cancel()
+        startHintAnimator = ObjectAnimator.ofFloat(hint, View.ALPHA, 1f, 0.25f, 1f).apply {
+            duration = 900
+            repeatCount = ValueAnimator.INFINITE
+            repeatMode = ValueAnimator.RESTART
+            start()
+        }
+    }
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
@@ -574,6 +605,7 @@ class MainActivity : AppCompatActivity() {
 
                             isRecordingCsv = true
                             scanBtn.text = "STOP"
+                            updateFloorButtonVisibility()
                         }
 
                     } else {
@@ -581,6 +613,7 @@ class MainActivity : AppCompatActivity() {
                         // STOP (เหมือนเดิม)
                         isRecordingCsv = false
                         scanBtn.text = "START"
+                        updateFloorButtonVisibility()
 
                         saveCellularCsv()
                         saveNeighborCsv()
@@ -615,11 +648,13 @@ class MainActivity : AppCompatActivity() {
                             wifiNeighborCsvBuffer.clear()
                             isRecordingWifiCsv = true
                             scanBtn.text = "STOP"
+                            updateFloorButtonVisibility()
                         }
 
                     } else {
                         isRecordingWifiCsv = false
                         scanBtn.text = "START"
+                        updateFloorButtonVisibility()
 
                         if (!canWriteLegacyStorage()) {
                             toast("Storage permission required")
@@ -846,13 +881,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStartButtonState() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
-        val hint = findViewById<TextView>(R.id.startHintText)
 
         // ถ้ากำลังอัด → START ต้องกดได้ และไม่ต้องมีข้อความเตือน
         if (isRecordingCsv || isRecordingWifiCsv) {
             scanBtn.isEnabled = true
             scanBtn.alpha = 1f
-            hint.visibility = View.GONE
+            setStartHint(null)
             return
         }
 
@@ -876,21 +910,19 @@ class MainActivity : AppCompatActivity() {
                     !gpsOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please turn on GPS"
-                        hint.visibility = View.VISIBLE
+                        setStartHint("Please turn on GPS")
                     }
 
                     !inService -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Cellular service not ready"
-                        hint.visibility = View.VISIBLE
+                        setStartHint("Cellular service not ready")
                     }
 
                     else -> {
                         scanBtn.isEnabled = true
                         scanBtn.alpha = 1f
-                        hint.visibility = View.GONE
+                        setStartHint(null)
                     }
                 }
             }
@@ -912,28 +944,25 @@ class MainActivity : AppCompatActivity() {
                     !wifiOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please turn on Wi-Fi"
-                        hint.visibility = View.VISIBLE
+                        setStartHint("Please turn on Wi-Fi")
                     }
 
                     !gpsOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please turn on GPS"
-                        hint.visibility = View.VISIBLE
+                        setStartHint("Please turn on GPS")
                     }
                     !isConnected -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please connect to Wi-Fi"
-                        hint.visibility = View.VISIBLE
+                        setStartHint("Please connect to Wi-Fi")
                     }
 
 
                     else -> {
                         scanBtn.isEnabled = true
                         scanBtn.alpha = 1f
-                        hint.visibility = View.GONE
+                        setStartHint(null)
                     }
                 }
             }
@@ -941,7 +970,7 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 scanBtn.isEnabled = false
                 scanBtn.alpha = 0.4f
-                hint.visibility = View.GONE
+                setStartHint(null)
             }
         }
     }
