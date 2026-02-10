@@ -492,6 +492,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun promptEditFloorHeightBeforeStart(onProceed: () -> Unit) {
+        val input = android.widget.EditText(this)
+        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or
+            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        input.setText(floorHeightMeters.toString())
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Floor Height (m)")
+            .setMessage("Adjust floor height before start")
+            .setView(input)
+            .setPositiveButton("Start") { _, _ ->
+                val value = input.text.toString().trim().toFloatOrNull()
+                if (value != null && value > 0f) {
+                    floorHeightMeters = value
+                    toast("Floor height: %.2f m".format(value))
+                    onProceed()
+                } else {
+                    toast("Invalid floor height")
+                }
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                toast("Start canceled")
+            }
+            .show()
+    }
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
@@ -593,19 +619,21 @@ class MainActivity : AppCompatActivity() {
                             calibrateAltitude(startFloor)
                             toast("Start floor = $startFloor")
 
-                            // 👉 3) เริ่ม recording
-                            cellFrag.setGroundButtonsVisible(false)
-                            cellFrag.showGroundUiAfterStart()
+                            promptEditFloorHeightBeforeStart {
+                                // 👉 3) เริ่ม recording
+                                cellFrag.setGroundButtonsVisible(false)
+                                cellFrag.showGroundUiAfterStart()
 
-                            currentCellularSessionId =
-                                getNextSessionIdMaxPlusOne("Cellular")
+                                currentCellularSessionId =
+                                    getNextSessionIdMaxPlusOne("Cellular")
 
-                            csvBuffer.clear()
-                            neighborCsvBuffer.clear()
+                                csvBuffer.clear()
+                                neighborCsvBuffer.clear()
 
-                            isRecordingCsv = true
-                            scanBtn.text = "STOP"
-                            updateFloorButtonVisibility()
+                                isRecordingCsv = true
+                                scanBtn.text = "STOP"
+                                updateFloorButtonVisibility()
+                            }
                         }
 
                     } else {
@@ -638,17 +666,19 @@ class MainActivity : AppCompatActivity() {
                             calibrateAltitude(selectedFloor)
                             toast("Start floor = $selectedFloor")
 
-                            fragment.setGroundButtonsVisible(false)
-                            fragment.showGroundUiAfterStart()
+                            promptEditFloorHeightBeforeStart {
+                                fragment.setGroundButtonsVisible(false)
+                                fragment.showGroundUiAfterStart()
 
-                            currentWifiSessionId =
-                                getNextSessionIdMaxPlusOne("Wifi")
+                                currentWifiSessionId =
+                                    getNextSessionIdMaxPlusOne("Wifi")
 
-                            wifiCsvBuffer.clear()
-                            wifiNeighborCsvBuffer.clear()
-                            isRecordingWifiCsv = true
-                            scanBtn.text = "STOP"
-                            updateFloorButtonVisibility()
+                                wifiCsvBuffer.clear()
+                                wifiNeighborCsvBuffer.clear()
+                                isRecordingWifiCsv = true
+                                scanBtn.text = "STOP"
+                                updateFloorButtonVisibility()
+                            }
                         }
 
                     } else {
