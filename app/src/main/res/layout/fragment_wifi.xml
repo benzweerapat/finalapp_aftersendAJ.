@@ -529,52 +529,61 @@
                             android:textSize="11sp"
                             android:layout_marginTop="2dp"/>
                     </LinearLayout>
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:background="#2C2C2C"
+                        android:layout_marginHorizontal="8dp"/>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="0.9"
+                        android:orientation="vertical"
+                        android:paddingStart="8dp"
+                        android:gravity="center_vertical">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnCalibrate"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:text="Set Ground"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"
+                            android:textColor="#60A5FA"
+                            app:strokeColor="#3B82F6"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="20dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReset"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="40dp"
+                            android:layout_marginTop="8dp"
+                            android:text="Reset"
+                            android:textAllCaps="false"
+                            android:textSize="12sp"
+                            android:textColor="#F87171"
+                            app:strokeColor="#EF4444"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="20dp" />
+
+                        <ImageView
+                            android:id="@+id/btnEditFloorHeight"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:layout_gravity="end"
+                            android:layout_marginTop="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:src="@android:drawable/ic_menu_edit"
+                            app:tint="#80FFFFFF" />
+                    </LinearLayout>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginTop="12dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnCalibrate"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Set Ground"
-                        android:textSize="12sp"
-                        android:textColor="#3B82F6"
-                        app:cornerRadius="8dp"
-                        android:backgroundTint="@android:color/transparent"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_marginEnd="6dp"
-                        android:minHeight="48dp"/>
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnReset"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Reset"
-                        android:textSize="12sp"
-                        android:textColor="#EF4444"
-                        app:cornerRadius="8dp"
-                        android:backgroundTint="@android:color/transparent"
-                        style="@style/Widget.MaterialComponents.Button.TextButton"
-                        android:layout_marginStart="6dp"
-                        android:minHeight="48dp"/>
-
-                    <ImageView
-                        android:id="@+id/btnEditFloorHeight"
-                        android:layout_width="40dp"
-                        android:layout_height="25dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:clickable="true"
-                        android:focusable="true"
-                        android:src="@android:drawable/ic_menu_edit"
-                        app:tint="#80FFFFFF" />
-                </LinearLayout>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
