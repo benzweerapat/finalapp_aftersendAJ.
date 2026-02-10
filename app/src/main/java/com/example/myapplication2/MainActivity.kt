@@ -712,7 +712,7 @@ class MainActivity : AppCompatActivity() {
                 1 / 5.255
             ))
             baroRelAlt = "%.2f".format(h)
-            baroFloor = ((h / floorHeightMeters).roundToInt() + 1).toString()
+            baroFloor = (startFloor + (h / floorHeightMeters).roundToInt()).toString()
         }
 
         // ===== GPS =====
@@ -721,7 +721,7 @@ class MainActivity : AppCompatActivity() {
         if (loc != null && referenceGpsAltitude != null && loc.hasAltitude()) {
             val rel = loc.altitude - referenceGpsAltitude!!
             gpsRelAlt = "%.2f".format(rel)
-            gpsFloor = ((rel / floorHeightMeters).roundToInt() + 1).toString()
+            gpsFloor = (startFloor + (rel / floorHeightMeters).roundToInt()).toString()
         }
 
         val row = listOf(
