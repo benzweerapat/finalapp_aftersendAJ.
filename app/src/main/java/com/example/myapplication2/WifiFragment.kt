@@ -318,6 +318,32 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
 
             mainActivity.toast("Reset Height")
         }
+
+        btnEditFloorHeight.setOnClickListener {
+            showEditDialog()
+        }
+    }
+
+    private fun showEditDialog() {
+        val input = EditText(requireContext())
+        input.inputType =
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        input.setText(mainActivity.floorHeightMeters.toString())
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Floor Height (m)")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val v = input.text.toString().toFloatOrNull()
+                if (v != null && v > 0f) {
+                    mainActivity.floorHeightMeters = v
+                    mainActivity.toast("Saved: $v m")
+                } else {
+                    mainActivity.toast("Invalid floor height")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onResume() {
