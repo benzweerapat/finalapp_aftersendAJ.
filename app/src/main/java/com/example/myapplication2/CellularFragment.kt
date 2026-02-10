@@ -24,6 +24,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
 import androidx.core.content.ContextCompat
+import kotlin.toString
 
 
 class CellularFragment : Fragment(R.layout.fragment_cellular) {
@@ -92,6 +93,37 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         }
     }
 
+    //สร้าง Dialog ให้ผู้ใช้เลือกชั้น
+    fun showStartFloorDialog(onConfirm: (Int) -> Unit) {
+
+        val floors = arrayOf("1", "2", "3", "4", "5", "Custom")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Select start floor")
+            .setItems(floors) { _, which ->
+
+                if (floors[which] != "Custom") {
+                    onConfirm(floors[which].toInt())
+                } else {
+                    // Custom floor
+                    val input = EditText(requireContext())
+                    input.inputType =
+                        android.text.InputType.TYPE_CLASS_NUMBER
+
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Enter floor number")
+                        .setView(input)
+                        .setPositiveButton("OK") { _, _ ->
+                            val v = input.text.toString().toIntOrNull()
+                            if (v != null) onConfirm(v)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+            }
+            .show()
+    }
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -136,20 +168,23 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
 
         btnCalibrate?.setOnClickListener {
-            mainActivity.calibrateAltitude()
 
-            // Barometer
-            textAltitude?.visibility = View.VISIBLE
-            textFloor?.visibility = View.VISIBLE
-            textBaroEstimated?.visibility = View.VISIBLE
-            textGpsEstimated?.visibility = View.VISIBLE
+            showStartFloorDialog { startFloor ->
 
+                mainActivity.calibrateAltitude(startFloor)
 
-            // GPS
-            textGpsRelHeight?.visibility = View.VISIBLE
-            textGpsFloor?.visibility = View.VISIBLE
+                // Barometer
+                textAltitude?.visibility = View.VISIBLE
+                textFloor?.visibility = View.VISIBLE
+                textBaroEstimated?.visibility = View.VISIBLE
+                textGpsEstimated?.visibility = View.VISIBLE
 
-            mainActivity.toast("Ground Set")
+                // GPS
+                textGpsRelHeight?.visibility = View.VISIBLE
+                textGpsFloor?.visibility = View.VISIBLE
+
+                mainActivity.toast("Start floor = $startFloor")
+            }
         }
 
         btnReset?.setOnClickListener {
@@ -303,7 +338,8 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         if (mainActivity.referencePressure != -1f && press > 0) {
             val pRatio = press / mainActivity.referencePressure
             val h = 44330 * (1 - Math.pow(pRatio.toDouble(), 1/5.255)).toFloat()
-            val floor = (h / mainActivity.floorHeightMeters).roundToInt() + 1
+            val floor =
+                mainActivity.startFloor + (h / mainActivity.floorHeightMeters).roundToInt()
             baroRelStr = "%.2f".format(h)
             baroFloorStr = floor.toString()
             textAltitude?.text = "Rel. Height: $baroRelStr m"
@@ -316,7 +352,9 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
             textGpsAltitude?.text = "Abs. Alt: %.1f m".format(loc.altitude)
             if (mainActivity.referenceGpsAltitude != null) {
                 val rel = loc.altitude - mainActivity.referenceGpsAltitude!!
-                val floor = (rel / mainActivity.floorHeightMeters).roundToInt() + 1
+                val floor =
+                    mainActivity.startFloor +
+                            (rel / mainActivity.floorHeightMeters).roundToInt()
                 gpsRelStr = "%.2f".format(rel)
                 gpsFloorStr = floor.toString()
                 textGpsRelHeight?.text = "Rel. Height: $gpsRelStr m"

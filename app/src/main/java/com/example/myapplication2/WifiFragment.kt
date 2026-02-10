@@ -28,6 +28,8 @@ import kotlin.math.roundToInt
 import android.widget.ImageView
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
+import androidx.appcompat.app.AlertDialog
+import android.widget.EditText
 
 
 
@@ -138,29 +140,59 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         val gpsOn = isLocationEnabled()
         iconGps?.setColorFilter(
             if (gpsOn)
-                android.graphics.Color.parseColor("#4CAF50")
+                android.graphics.Color.parseColor("#4CAF50") // เขียว
             else
-                android.graphics.Color.parseColor("#F44336")
+                android.graphics.Color.parseColor("#F44336") // แดง
         )
 
         // ===== Wi-Fi =====
         if (!wifiManager.isWifiEnabled) {
-            // Wi-Fi OFF → แดง นิ่ง
+            // 🔴 Wi-Fi OFF
             stopWifiBlink()
             iconWifi?.setColorFilter(android.graphics.Color.parseColor("#F44336"))
             return
         }
 
-        // Wi-Fi ON
-        iconWifi?.setColorFilter(android.graphics.Color.parseColor("#4CAF50"))
-
         if (!isConnected) {
-            // 🟢 Non-connected → เขียว + กระพริบ
+            // 🟠 Wi-Fi ON แต่ Non-connected
+            iconWifi?.setColorFilter(android.graphics.Color.parseColor("#FF9800")) // ส้ม
             startWifiBlink()
         } else {
-            // 🟢 Connected → เขียว นิ่ง
+            // 🟢 Wi-Fi Connected
+            iconWifi?.setColorFilter(android.graphics.Color.parseColor("#4CAF50")) // เขียว
             stopWifiBlink()
         }
+    }
+
+    //สร้าง Dialog ให้ผู้ใช้เลือกชั้น
+    fun showStartFloorDialog(onConfirm: (Int) -> Unit) {
+
+        val floors = arrayOf("1", "2", "3", "4", "5", "Custom")
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Select start floor")
+            .setItems(floors) { _, which ->
+
+                if (floors[which] != "Custom") {
+                    onConfirm(floors[which].toInt())
+                } else {
+                    // Custom floor
+                    val input = EditText(requireContext())
+                    input.inputType =
+                        android.text.InputType.TYPE_CLASS_NUMBER
+
+                    AlertDialog.Builder(requireContext())
+                        .setTitle("Enter floor number")
+                        .setView(input)
+                        .setPositiveButton("OK") { _, _ ->
+                            val v = input.text.toString().toIntOrNull()
+                            if (v != null) onConfirm(v)
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+            }
+            .show()
     }
 
 
@@ -228,20 +260,23 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         }
 
         btnCalibrate.setOnClickListener {
-            mainActivity.calibrateAltitude()
 
-            // Barometer
-            textAltitude?.visibility = View.VISIBLE
-            textFloor?.visibility = View.VISIBLE
+            showStartFloorDialog { startFloor ->
 
-            // GPS
-            textGpsRelHeight?.visibility = View.VISIBLE
-            textGpsFloor?.visibility = View.VISIBLE
-            textBaroEstimated?.visibility = View.VISIBLE
-            textGpsEstimated?.visibility = View.VISIBLE
+                mainActivity.calibrateAltitude(startFloor)
 
+                // Barometer
+                textAltitude?.visibility = View.VISIBLE
+                textFloor?.visibility = View.VISIBLE
+                textBaroEstimated?.visibility = View.VISIBLE
+                textGpsEstimated?.visibility = View.VISIBLE
 
-            mainActivity.toast("Ground Set")
+                // GPS
+                textGpsRelHeight?.visibility = View.VISIBLE
+                textGpsFloor?.visibility = View.VISIBLE
+
+                mainActivity.toast("Start floor = $startFloor")
+            }
         }
 
         btnReset.setOnClickListener {
@@ -597,7 +632,11 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         if (mainActivity.referencePressure != -1f && press > 0) {
             val h = 44330 * (1 - Math.pow((press / mainActivity.referencePressure).toDouble(), 1 / 5.255))
             textAltitude?.text = "Rel. Height: %.2f m".format(h)
-            textFloor?.text = "Floor: ${(h / mainActivity.floorHeightMeters).roundToInt() + 1}"
+            val floor =
+                mainActivity.startFloor +
+                        (h / mainActivity.floorHeightMeters).roundToInt()
+
+            textFloor?.text = "Floor: $floor"
         } else {
             textAltitude?.text = "Rel. Height: $NA"
             textFloor?.text = "Floor: $NA"

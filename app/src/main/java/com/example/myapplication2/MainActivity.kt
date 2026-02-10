@@ -50,14 +50,14 @@ class MainActivity : AppCompatActivity() {
     var referenceGpsAltitude: Double? = null
     var floorHeightMeters: Float = 3.5f
 
+    var startFloor: Int = 1   // ชั้นเริ่มต้น (ผู้ใช้เลือก)
+
     private lateinit var locationManager: LocationManager
     private var sensorManager: SensorManager? = null
     private var pressureSensor: Sensor? = null
     private val ALPHA = 0.1f
 
     private lateinit var prefs: SharedPreferences
-    private var cellularSessionCounter = 1
-    private var wifiSessionCounter = 1
 
     private val permissionRequestCode = 101
     private var reportCounter = 1
@@ -65,6 +65,11 @@ class MainActivity : AppCompatActivity() {
     // ================== CELLULAR CSV ==================
     var isRecordingCsv = false
     var isGroundSet = false
+
+    // 🔒 ล็อก session ต่อ 1 การอัด
+    private var currentCellularSessionId: Int? = null
+    private var currentWifiSessionId: Int? = null
+
 
 
     private val csvBuffer = mutableListOf<List<String>>()
@@ -235,18 +240,19 @@ class MainActivity : AppCompatActivity() {
     private fun saveNeighborCsv() {
         if (neighborCsvBuffer.isEmpty()) return
 
-        val now = Date()
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
 
+        val sessionId = currentCellularSessionId ?: return
+        val timestamp =
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         // ใช้ค่า Session ล่าสุด (ลบ 1 เพราะ cellularSessionCounter มักจะถูกบวกเพิ่มไปแล้วใน saveCellularCsv)
-        val session = cellularSessionCounter - 1
-        val fileName = "Session_${session}_Neighbor_$timestamp.csv"
+
+        val fileName = "Session_${sessionId }_CELL_NEI_$timestamp.csv"
 
         // ✅ แก้ตรงนี้บรรทัดเดียว
         saveCsv(
             fileName,
-            neighborCsvHeader,
-            neighborCsvBuffer,
+            neighborLteCsvHeader,
+            neighborLteCsvBuffer,
             "Cellular"
         )
         // เคลียร์ข้อมูลทิ้งหลังบันทึกเสร็จ
@@ -268,8 +274,7 @@ class MainActivity : AppCompatActivity() {
         // *ต้องทำก่อนสิ่งอื่นใด* เพื่อให้ตัวแปรพร้อมใช้งาน
         // -------------------------------------------------
         prefs = getSharedPreferences("drive_test", MODE_PRIVATE)
-        cellularSessionCounter = prefs.getInt("cellular_session_counter", 1)
-        wifiSessionCounter = prefs.getInt("wifi_session_counter", 1)
+
 
         locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
@@ -428,6 +433,32 @@ class MainActivity : AppCompatActivity() {
     private fun setupButtons() {
 
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
+        val btnSelectFloor =
+            findViewById<Button>(R.id.btnSelectFloor)
+        btnSelectFloor.setOnClickListener {
+
+            val fragment =
+                supportFragmentManager.findFragmentById(R.id.fragment_container)
+
+            when (fragment) {
+
+                is CellularFragment -> {
+                    fragment.showStartFloorDialog { floor ->
+                        startFloor = floor
+                        btnSelectFloor.text = "Floor $floor"
+                        toast("Selected floor: $floor")
+                    }
+                }
+
+                is WifiFragment -> {
+                    fragment.showStartFloorDialog { floor ->
+                        startFloor = floor
+                        btnSelectFloor.text = "Floor $floor"
+                        toast("Selected floor: $floor")
+                    }
+                }
+            }
+        }
         findViewById<ImageView>(R.id.btnMenu).setOnClickListener { view ->
 
             if (isRecordingCsv || isRecordingWifiCsv) {
@@ -500,33 +531,43 @@ class MainActivity : AppCompatActivity() {
                 // ================= CELLULAR =================
                 // ค้นหาส่วน scanBtn.setOnClickListener ใน setupButtons()
                 is CellularFragment -> {
+
+                    val cellFrag = fragment as CellularFragment
+
                     if (!isRecordingCsv) {
 
-                        calibrateAltitude()
-                        toast("Ground set automatically")
+                        // 👉 1) ถามชั้นเริ่มต้นก่อน
+                        cellFrag.showStartFloorDialog { startFloor ->
 
-                        // 🔒 ซ่อน Set / Reset / EditFloor
-                        (fragment as? CellularFragment)?.setGroundButtonsVisible(false)
+                            // 👉 2) ค่อย calibrate
+                            calibrateAltitude(startFloor)
+                            toast("Start floor = $startFloor")
 
-                        // 👁️ แสดง Ground UI
-                        (fragment as? CellularFragment)?.showGroundUiAfterStart()
+                            // 👉 3) เริ่ม recording
+                            cellFrag.setGroundButtonsVisible(false)
+                            cellFrag.showGroundUiAfterStart()
 
-                        csvBuffer.clear()
-                        neighborCsvBuffer.clear()
-                        reportCounter = 1
-                        isRecordingCsv = true
-                        scanBtn.text = "STOP"
+                            currentCellularSessionId =
+                                getNextSessionIdMaxPlusOne("Cellular")
+
+                            csvBuffer.clear()
+                            neighborCsvBuffer.clear()
+
+                            isRecordingCsv = true
+                            scanBtn.text = "STOP"
+                        }
 
                     } else {
+
+                        // STOP (เหมือนเดิม)
                         isRecordingCsv = false
                         scanBtn.text = "START"
 
                         saveCellularCsv()
                         saveNeighborCsv()
+                        currentCellularSessionId = null
 
-                        // 👁️ โชว์ปุ่มกลับเฉพาะตอน STOP
-                        (fragment as? CellularFragment)?.setGroundButtonsVisible(true)
-
+                        cellFrag.setGroundButtonsVisible(true)
                         toast("All CSVs saved")
                     }
                 }
@@ -538,16 +579,24 @@ class MainActivity : AppCompatActivity() {
 
                     if (!isRecordingWifiCsv) {
 
-                        calibrateAltitude()
-                        toast("Ground set automatically")
+                        val fragment = fragment as WifiFragment
 
-                        // 🔒 ซ่อน Set / Reset / EditFloor (ของ WiFiFragment)
-                        (fragment as? WifiFragment)?.setGroundButtonsVisible(false)
-                        (fragment as? WifiFragment)?.showGroundUiAfterStart()
+                        fragment.showStartFloorDialog { selectedFloor ->
 
-                        wifiCsvBuffer.clear()
-                        isRecordingWifiCsv = true
-                        scanBtn.text = "STOP"
+                            calibrateAltitude(selectedFloor)
+                            toast("Start floor = $selectedFloor")
+
+                            fragment.setGroundButtonsVisible(false)
+                            fragment.showGroundUiAfterStart()
+
+                            currentWifiSessionId =
+                                getNextSessionIdMaxPlusOne("Wifi")
+
+                            wifiCsvBuffer.clear()
+                            wifiNeighborCsvBuffer.clear()
+                            isRecordingWifiCsv = true
+                            scanBtn.text = "STOP"
+                        }
 
                     } else {
                         isRecordingWifiCsv = false
@@ -560,6 +609,7 @@ class MainActivity : AppCompatActivity() {
 
                         saveWifiCsv(fragment.getCurrentSsid())
                         saveWifiNeighborCsv()
+                        currentWifiSessionId = null
 
                         // 👁️ โชว์ปุ่มกลับ
                         (fragment as? WifiFragment)?.setGroundButtonsVisible(true)
@@ -725,9 +775,17 @@ class MainActivity : AppCompatActivity() {
     }
     @SuppressLint("MissingPermission")
     fun isReadyToStart(): Boolean {
+
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.READ_PHONE_STATE
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return false
+        }
+
         val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
-        val serviceState = tm.serviceState   // 👈 เก็บครั้งเดียว
 
         val radioOff =
             android.provider.Settings.Global.getInt(
@@ -739,9 +797,12 @@ class MainActivity : AppCompatActivity() {
 
         val inService = tm.serviceState?.state == ServiceState.STATE_IN_SERVICE
         val dataOk = tm.dataState == TelephonyManager.DATA_CONNECTED
+
         val gpsOk = try {
             lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
-        } catch (_: Exception) { false }
+        } catch (_: Exception) {
+            false
+        }
 
         return !radioOff && inService && dataOk && gpsOk
     }
@@ -825,6 +886,8 @@ class MainActivity : AppCompatActivity() {
                     lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
                             lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
                 } catch (_: Exception) { false }
+                val info = wifiManager.connectionInfo
+                val isConnected = info != null && info.networkId != -1
 
                 when {
                     !wifiOn -> {
@@ -840,6 +903,13 @@ class MainActivity : AppCompatActivity() {
                         hint.text = "Please turn on GPS"
                         hint.visibility = View.VISIBLE
                     }
+                    !isConnected -> {
+                        scanBtn.isEnabled = false
+                        scanBtn.alpha = 0.4f
+                        hint.text = "Please connect to Wi-Fi"
+                        hint.visibility = View.VISIBLE
+                    }
+
 
                     else -> {
                         scanBtn.isEnabled = true
@@ -900,19 +970,19 @@ class MainActivity : AppCompatActivity() {
 
     // ================== SAVE CSV ==================
     private fun saveWifiCsv(ssid: String) {
-        if (wifiCsvBuffer.isEmpty()) {
-            toast("No WiFi data to save")
-            return
-        }
 
+        if (wifiCsvBuffer.isEmpty()) return
 
-        val now = Date()
-        val name = ssid.replace(Regex("[^a-zA-Z0-9_]"), "_")
-        val fileName = "Session_${wifiSessionCounter}_WIFI_SERV_${name}_" +
-                SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) + "_CSV.csv"
+        val sessionId = currentWifiSessionId ?: return
+        val timestamp =
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+
+        val safeSsid = ssid.replace(Regex("[^a-zA-Z0-9_]"), "_")
+
+        val fileName =
+            "Session_${sessionId}_WIFI_SERV_${safeSsid}_$timestamp.csv"
 
         saveCsv(fileName, wifiCsvHeader, wifiCsvBuffer, "Wifi")
-
     }
     private fun saveWifiNeighborCsv() {
         if (wifiNeighborCsvBuffer.isEmpty()) {
@@ -920,12 +990,11 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val now = Date()
+        val sessionId = currentWifiSessionId ?: return
+        val timestamp =
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val fileName =
-            "Session_${wifiSessionCounter - 1}_WIFI_NEI_" +
-                    SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) +
-                    ".csv"
-
+            "Session_${sessionId}_WIFI_NEI_$timestamp.csv"
         saveCsv(
             fileName = fileName,
             header = wifiNeighborHeader,
@@ -938,10 +1007,11 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun saveCellularCsv() {
-        val now = Date()
-        val fileName = "Session_${cellularSessionCounter}_Serving_" +
-                SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now) + "_CSV.csv"
-
+        val sessionId = currentCellularSessionId ?: return
+        val timestamp =
+            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val fileName =
+            "Session_${sessionId}_CELL_SERV_$timestamp.csv"
         saveCsv(fileName, csvHeader, csvBuffer, "Cellular")
 
     }
@@ -1007,18 +1077,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            // ===== Update session counter =====
-            if (subDir == "Cellular") {
-                cellularSessionCounter++
-                prefs.edit()
-                    .putInt("cellular_session_counter", cellularSessionCounter)
-                    .apply()
-            } else if (subDir == "Wifi") {
-                wifiSessionCounter++
-                prefs.edit()
-                    .putInt("wifi_session_counter", wifiSessionCounter)
-                    .apply()
-            }
+
 
             toast("Saved: Download/DriveTest/$subDir/$fileName")
 
@@ -1031,13 +1090,14 @@ class MainActivity : AppCompatActivity() {
 
 
     // ================== UTILS ==================
-    fun calibrateAltitude() {
+    fun calibrateAltitude(selectedStartFloor: Int) {
         if (currentFilteredPressure > 0) {
             referencePressure = currentFilteredPressure
         }
         if (latestLocation?.hasAltitude() == true) {
             referenceGpsAltitude = latestLocation!!.altitude
         }
+        startFloor = selectedStartFloor
         isGroundSet = true
     }
     //เพิ่มฟังก์ชันตรวจ LTE CA
@@ -1107,8 +1167,34 @@ class MainActivity : AppCompatActivity() {
             permissionRequestCode
         )
     }
-
+//เพิ่มฟังก์ชันหา Session ใหม่
     fun toast(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
+    fun getNextSessionIdMaxPlusOne(subDir: String): Int {
+
+        val baseDir = File(
+            Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_DOWNLOADS
+            ),
+            "DriveTest/$subDir"
+        )
+
+        if (!baseDir.exists()) return 1
+
+        var maxSession = 0
+
+        baseDir.listFiles()?.forEach { file ->
+            val regex = Regex("""Session_(\d+)_""")
+            val match = regex.find(file.name)
+            match?.groupValues?.get(1)?.toIntOrNull()?.let { session ->
+                if (session > maxSession) {
+                    maxSession = session
+                }
+            }
+        }
+
+        return maxSession + 1
+    }
+
 }
