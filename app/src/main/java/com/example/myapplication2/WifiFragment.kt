@@ -423,10 +423,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         if (mainActivity.isRecordingWifiCsv) {
             // ใช้เลข Report ของ Serving รอบล่าสุดเท่านั้น
             val reportId = mainActivity.getPendingWifiNeighborReportId() ?: return
-
-            val now = Date()
-            val sysTime =
-                SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
+            val sysTime = mainActivity.getPendingWifiNeighborSysTime() ?: return
             val loc = mainActivity.latestLocation
 
             // ข้อมูลตัวที่เชื่อมต่ออยู่ปัจจุบัน
