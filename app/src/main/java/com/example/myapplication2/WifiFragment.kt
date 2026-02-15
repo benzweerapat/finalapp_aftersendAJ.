@@ -510,6 +510,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     /* ================= Core ================= */
     @SuppressLint("MissingPermission")
     private fun scanWifi() {
+        // reset report id per scan cycle; will be assigned only when serving row is written
+        mainActivity.currentWifiReportId = 0
 
         // ❗ กันไว้ตั้งแต่บรรทัดแรก
         if (!hasWifiPermission()) {
@@ -729,11 +731,11 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 .sortedByDescending { it.level }
                 .take(50)
         )
-        // 1️⃣ เขียน Neighbor (ใช้ report เดียวกับ Serving)
-        recordWifiNeighbors(results)
+        // 1️⃣ เขียน Neighbor เฉพาะรอบที่มี Serving report แล้ว
+        if (mainActivity.isRecordingWifiCsv && mainActivity.currentWifiReportId > 0) {
+            recordWifiNeighbors(results)
 
-        // 2️⃣ ปิดรอบ → ค่อย increment
-        if (mainActivity.isRecordingWifiCsv) {
+            // 2️⃣ ปิดรอบของ report นี้ → ค่อย increment
             mainActivity.incrementReportCounter()
         }
     }

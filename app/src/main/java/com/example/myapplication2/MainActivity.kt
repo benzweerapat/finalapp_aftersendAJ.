@@ -724,7 +724,11 @@ class MainActivity : AppCompatActivity() {
             gpsFloor = (startFloor + (rel / floorHeightMeters).roundToInt()).toString()
         }
 
-        val reportId = if (currentWifiReportId > 0) currentWifiReportId else getNextReportId()
+        val reportId = if (currentWifiReportId > 0) {
+            currentWifiReportId
+        } else {
+            getNextReportId().also { currentWifiReportId = it }
+        }
 
         val row = listOf(
             reportId.toString(),                        // report (sync with WiFi Neighbor)
