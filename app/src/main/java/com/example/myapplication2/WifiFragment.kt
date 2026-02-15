@@ -115,6 +115,24 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         wifiBlinkAnimator = null
         iconWifi?.alpha = 1f
     }
+
+    private fun applyRssiBadgeStyle(rssi: Int?) {
+        val color = when {
+            rssi == null -> "#7A7A7A"
+            rssi >= -60 -> "#7CF3A1"
+            rssi in -70..-61 -> "#FFD66E"
+            rssi in -80..-71 -> "#FFB27C"
+            else -> "#FF8A8A"
+        }
+
+        try {
+            wifiRssi?.setBackgroundColor(android.graphics.Color.parseColor(color))
+            wifiRssi?.setTextColor(android.graphics.Color.BLACK)
+        } catch (_: Exception) {
+            wifiRssi?.setTextColor(android.graphics.Color.WHITE)
+        }
+    }
+
     fun showGroundUiAfterStart() {
         // Barometer
         textAltitude?.visibility = View.VISIBLE
@@ -318,6 +336,32 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
 
             mainActivity.toast("Reset Height")
         }
+
+        btnEditFloorHeight.setOnClickListener {
+            showEditDialog()
+        }
+    }
+
+    private fun showEditDialog() {
+        val input = EditText(requireContext())
+        input.inputType =
+            android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        input.setText(mainActivity.floorHeightMeters.toString())
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Floor Height (m)")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val v = input.text.toString().toFloatOrNull()
+                if (v != null && v > 0f) {
+                    mainActivity.floorHeightMeters = v
+                    mainActivity.toast("Saved: $v m")
+                } else {
+                    mainActivity.toast("Invalid floor height")
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     override fun onResume() {
@@ -516,6 +560,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         wifiMac?.text = info.bssid   // MAC Address
 
         wifiRssi?.text = "$rssi dBm"
+        applyRssiBadgeStyle(rssi)
         wifiFreq?.text = "$freq MHz"
         wifiLinkSpeed?.text = "${info.linkSpeed} Mbps"
         wifiChannel?.text = "CH: ${freqToChannel(freq)}"
@@ -602,6 +647,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             wifiChannel, wifiBw, wifiStandard, wifiSecurity,
             wifiTxRx, wifiSignalQual, wifiSnr, wifiSpeed
         ).forEach { it?.text = NA }
+        applyRssiBadgeStyle(null)
 
         latLngValue?.text = "$NA / $NA"
         if (::wifiAdapter.isInitialized) wifiAdapter.setData(emptyList())
@@ -611,6 +657,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         wifiMac?.text = NA
 
         wifiRssi?.text = NA
+        applyRssiBadgeStyle(null)
         wifiFreq?.text = NA
         wifiLinkSpeed?.text = NA
         wifiChannel?.text = NA
