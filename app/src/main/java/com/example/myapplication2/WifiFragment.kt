@@ -463,7 +463,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private fun updateWifiNeighborsCsv(results: List<ScanResult>) {
         if (mainActivity.isRecordingWifiCsv) {
             // 1. ดึงเลข Report ปัจจุบัน (ใช้ร่วมกับไฟล์ WiFi หลัก)
-            val reportId = mainActivity.getNextReportId()
+            val reportId = mainActivity.assignWifiReportForCurrentCycle()
             val now = Date()
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(now)
             val loc = mainActivity.latestLocation
@@ -510,9 +510,6 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     /* ================= Core ================= */
     @SuppressLint("MissingPermission")
     private fun scanWifi() {
-        // reset report id per scan cycle; will be assigned only when serving row is written
-        mainActivity.currentWifiReportId = 0
-
         // ❗ กันไว้ตั้งแต่บรรทัดแรก
         if (!hasWifiPermission()) {
             wifiSsid?.text = "Wi-Fi permission required"
@@ -604,9 +601,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 wifiSecurity?.text = scan.capabilities
             }
         }
-        // 🔒 กำหนด report ครั้งนี้
-        mainActivity.currentWifiReportId = mainActivity.getNextReportId()
-
+        // 🔒 กำหนด report ครั้งนี้จาก Serving WiFi เป็นหลัก
+        mainActivity.assignWifiReportForCurrentCycle()
 
         mainActivity.addWifiCsvRow(
             ssid = currentSsid,
@@ -736,7 +732,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             recordWifiNeighbors(results)
 
             // 2️⃣ ปิดรอบของ report นี้ → ค่อย increment
-            mainActivity.incrementReportCounter()
+            mainActivity.finishWifiReportCycle()
         }
     }
 

@@ -222,6 +222,7 @@ class MainActivity : AppCompatActivity() {
         "latitude", "longitude"
     )
     var currentWifiReportId: Int = 0
+    private var wifiReportCounter: Int = 1
 
     // 2. Buffer สำหรับเก็บข้อมูลแถวของ Neighbor
     private val neighborCsvBuffer = mutableListOf<List<String>>()
@@ -229,6 +230,25 @@ class MainActivity : AppCompatActivity() {
     fun getNextReportId(): Int = reportCounter
     fun incrementReportCounter() {
         reportCounter++
+    }
+
+    fun beginWifiReportSession() {
+        wifiReportCounter = 1
+        currentWifiReportId = 0
+    }
+
+    fun assignWifiReportForCurrentCycle(): Int {
+        if (currentWifiReportId <= 0) {
+            currentWifiReportId = wifiReportCounter
+        }
+        return currentWifiReportId
+    }
+
+    fun finishWifiReportCycle() {
+        if (currentWifiReportId > 0) {
+            wifiReportCounter++
+            currentWifiReportId = 0
+        }
     }
 
     // 3. ฟังก์ชันสำหรับเพิ่มแถวข้อมูล (เรียกจาก Fragment)
@@ -614,6 +634,7 @@ class MainActivity : AppCompatActivity() {
                             wifiCsvBuffer.clear()
                             wifiNeighborCsvBuffer.clear()
                             isRecordingWifiCsv = true
+                            beginWifiReportSession()
                             scanBtn.text = "STOP"
                         }
 
@@ -724,11 +745,7 @@ class MainActivity : AppCompatActivity() {
             gpsFloor = (startFloor + (rel / floorHeightMeters).roundToInt()).toString()
         }
 
-        val reportId = if (currentWifiReportId > 0) {
-            currentWifiReportId
-        } else {
-            getNextReportId().also { currentWifiReportId = it }
-        }
+        val reportId = assignWifiReportForCurrentCycle()
 
         val row = listOf(
             reportId.toString(),                        // report (sync with WiFi Neighbor)
