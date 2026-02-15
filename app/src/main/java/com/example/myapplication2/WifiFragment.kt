@@ -421,8 +421,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     }
     private fun recordWifiNeighbors(results: List<ScanResult>) {
         if (mainActivity.isRecordingWifiCsv) {
-            // ใช้เลข Report ล่าสุดจาก MainActivity
-            val reportId = mainActivity.currentWifiReportId
+            // ใช้เลข Report ของ Serving รอบล่าสุดเท่านั้น
+            val reportId = mainActivity.getPendingWifiNeighborReportId() ?: return
 
             val now = Date()
             val sysTime =
@@ -457,13 +457,14 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                     nIdx++
                 }
             }
+            mainActivity.clearPendingWifiNeighborReportId()
         }
     }
     // วางไว้ภายใน class WifiFragment
     private fun updateWifiNeighborsCsv(results: List<ScanResult>) {
         if (mainActivity.isRecordingWifiCsv) {
             // 1. ดึงเลข Report ปัจจุบัน (ใช้ร่วมกับไฟล์ WiFi หลัก)
-            val reportId = mainActivity.assignWifiReportForCurrentCycle()
+            val reportId = mainActivity.getPendingWifiNeighborReportId() ?: return
             val now = Date()
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(now)
             val loc = mainActivity.latestLocation
@@ -601,9 +602,6 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 wifiSecurity?.text = scan.capabilities
             }
         }
-        // 🔒 กำหนด report ครั้งนี้จาก Serving WiFi เป็นหลัก
-        mainActivity.assignWifiReportForCurrentCycle()
-
         mainActivity.addWifiCsvRow(
             ssid = currentSsid,
             freq = freq,
@@ -727,12 +725,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 .sortedByDescending { it.level }
                 .take(50)
         )
-        // 1️⃣ เขียน Neighbor เฉพาะรอบที่มี Serving report แล้ว
-        if (mainActivity.isRecordingWifiCsv && mainActivity.currentWifiReportId > 0) {
+        if (mainActivity.isRecordingWifiCsv) {
             recordWifiNeighbors(results)
-
-            // 2️⃣ ปิดรอบของ report นี้ → ค่อย increment
-            mainActivity.finishWifiReportCycle()
         }
     }
 
