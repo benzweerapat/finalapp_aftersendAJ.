@@ -56,7 +56,7 @@ class MainActivity : AppCompatActivity() {
     private var sensorManager: SensorManager? = null
     private var pressureSensor: Sensor? = null
     private val ALPHA = 0.1f
-
+//
     private lateinit var prefs: SharedPreferences
 
     private val permissionRequestCode = 101
