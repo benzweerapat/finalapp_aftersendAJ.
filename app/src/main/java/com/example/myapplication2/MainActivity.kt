@@ -69,6 +69,17 @@ class MainActivity : AppCompatActivity() {
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
     private var currentWifiSessionId: Int? = null
+    // ================== CELLULAR SNAPSHOT SYSTEM ==================
+
+    private var cellularReportCounter: Int = 1
+
+    private var pendingCellularReportId: Int? = null
+    private var pendingCellularSysTime: String? = null
+
+    private var isCellularSnapshotActive = false
+
+    // buffer กัน async timing
+    private val pendingCellularNeighborBuffer = mutableListOf<List<String>>()
 
 
 
@@ -119,80 +130,7 @@ class MainActivity : AppCompatActivity() {
         "baro_pressure","baro_rel_alt","baro_floor","gps_rel_alt","gps_floor"
     )
 
-    val neighborLteCsvHeader = listOf(
-        "session_id",
-        "sys_time",
-        "report",
 
-        "serving_tech",
-        "serving_arfcn",
-        "serving_pci",
-        "serving_eci",
-
-        "neighbor_index",
-        "neighbor_tech",
-        "neighbor_arfcn",
-        "neighbor_pci",
-        "neighbor_rsrp",
-        "neighbor_rsrq",
-        "neighbor_sinr",
-
-        "lat",
-        "long"
-    )
-    fun addNeighborLteCsvRow(
-        sessionId: Int,
-        report: Int,
-
-        servingArfcn: Int?,
-        servingPci: Int?,
-        servingEci: Long?,
-
-        neighborIndex: Int,
-        neighborTech: String,
-        neighborArfcn: Int?,
-        neighborPci: Int?,
-        neighborRsrp: Int?,
-        neighborRsrq: Int?,
-        neighborSinr: Float?
-    ) {
-        if (!isRecordingNeighborCsv) return
-
-        val now = Date()
-        val sysTime =
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
-
-        val lat = latestLocation?.latitude?.toString() ?: ""
-        val lon = latestLocation?.longitude?.toString() ?: ""
-
-        val row = listOf(
-            sessionId.toString(),
-            sysTime,
-            report.toString(),
-
-            "LTE",
-            servingArfcn?.toString() ?: "",
-            servingPci?.toString() ?: "",
-            servingEci?.toString() ?: "",
-
-            neighborIndex.toString(),
-            neighborTech,
-            neighborArfcn?.toString() ?: "",
-            neighborPci?.toString() ?: "",
-            neighborRsrp?.toString() ?: "",
-            neighborRsrq?.toString() ?: "",
-            neighborSinr?.toString() ?: "",
-
-            lat,
-            lon
-        )
-
-        neighborLteCsvBuffer.add(row)
-    }
-
-    // ================== NEIGHBOR LTE CSV ==================
-    var isRecordingNeighborCsv = false
-    private val neighborLteCsvBuffer = mutableListOf<List<String>>()
 
 
 
@@ -249,6 +187,70 @@ class MainActivity : AppCompatActivity() {
         pendingWifiNeighborSysTime = null
         return id
     }
+    fun allocateNextCellularServingReport(): Pair<Int, String> {
+
+        val reportId = cellularReportCounter++
+        val sysTime = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+            .format(Date())
+
+        pendingCellularReportId = reportId
+        pendingCellularSysTime = sysTime
+        isCellularSnapshotActive = true
+
+        return Pair(reportId, sysTime)
+    }
+    fun addCellularNeighborRowSafe(rowWithoutReport: List<String>) {
+
+        if (!isRecordingCsv) return
+
+        val reportId = pendingCellularReportId
+        val sysTime = pendingCellularSysTime
+
+        if (!isCellularSnapshotActive || reportId == null || sysTime == null) {
+            pendingCellularNeighborBuffer.add(rowWithoutReport)
+            return
+        }
+
+        val finalRow = listOf(
+            reportId.toString(),
+            rowWithoutReport[0], // neighbor_index
+            sysTime
+        ) + rowWithoutReport.drop(1)
+
+        neighborCsvBuffer.add(finalRow)
+    }
+    fun flushPendingCellularNeighbors() {
+
+        val reportId = pendingCellularReportId ?: return
+        val sysTime = pendingCellularSysTime ?: return
+
+        pendingCellularNeighborBuffer.forEach { rowWithoutReport ->
+
+            val finalRow = listOf(
+                reportId.toString(),
+                rowWithoutReport[0],
+                sysTime
+            ) + rowWithoutReport.drop(1)
+
+            neighborCsvBuffer.add(finalRow)
+        }
+
+        pendingCellularNeighborBuffer.clear()
+    }
+    fun clearPendingCellularSnapshot() {
+        pendingCellularReportId = null
+        pendingCellularSysTime = null
+        isCellularSnapshotActive = false
+        pendingCellularNeighborBuffer.clear()
+    }
+    fun beginCellularReportSession() {
+        cellularReportCounter = 1
+        pendingCellularReportId = null
+        pendingCellularSysTime = null
+        isCellularSnapshotActive = false
+        pendingCellularNeighborBuffer.clear()
+    }
+
 
     fun getPendingWifiNeighborReportId(): Int? {
         return pendingWifiNeighborReportId.takeIf { it > 0 }
@@ -283,8 +285,8 @@ class MainActivity : AppCompatActivity() {
         // ✅ แก้ตรงนี้บรรทัดเดียว
         saveCsv(
             fileName,
-            neighborLteCsvHeader,
-            neighborLteCsvBuffer,
+            neighborCsvHeader,   // ✅ ใช้ header ตัวนี้
+            neighborCsvBuffer,   // ✅ ใช้ buffer ตัวนี้
             "Cellular"
         )
         // เคลียร์ข้อมูลทิ้งหลังบันทึกเสร็จ
@@ -603,7 +605,7 @@ class MainActivity : AppCompatActivity() {
 
                             csvBuffer.clear()
                             neighborCsvBuffer.clear()
-
+                            beginCellularReportSession()
                             isRecordingCsv = true
                             scanBtn.text = "STOP"
                         }
@@ -617,7 +619,7 @@ class MainActivity : AppCompatActivity() {
                         saveCellularCsv()
                         saveNeighborCsv()
                         currentCellularSessionId = null
-
+                        clearPendingCellularSnapshot()
                         cellFrag.setGroundButtonsVisible(true)
                         toast("All CSVs saved")
                     }
