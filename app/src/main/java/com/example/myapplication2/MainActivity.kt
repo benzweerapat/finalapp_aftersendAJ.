@@ -1,6 +1,4 @@
 package com.example.myapplication2
-import android.animation.ObjectAnimator
-import android.animation.ValueAnimator
 import android.view.View
 
 import android.Manifest
@@ -71,7 +69,17 @@ class MainActivity : AppCompatActivity() {
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
     private var currentWifiSessionId: Int? = null
-    private var startHintAnimator: ObjectAnimator? = null
+    // ================== CELLULAR SNAPSHOT SYSTEM ==================
+
+    private var cellularReportCounter: Int = 1
+
+    private var pendingCellularReportId: Int? = null
+    private var pendingCellularSysTime: String? = null
+
+    private var isCellularSnapshotActive = false
+
+    // buffer กัน async timing
+    private val pendingCellularNeighborBuffer = mutableListOf<List<String>>()
 
 
 
@@ -122,80 +130,7 @@ class MainActivity : AppCompatActivity() {
         "baro_pressure","baro_rel_alt","baro_floor","gps_rel_alt","gps_floor"
     )
 
-    val neighborLteCsvHeader = listOf(
-        "session_id",
-        "sys_time",
-        "report",
 
-        "serving_tech",
-        "serving_arfcn",
-        "serving_pci",
-        "serving_eci",
-
-        "neighbor_index",
-        "neighbor_tech",
-        "neighbor_arfcn",
-        "neighbor_pci",
-        "neighbor_rsrp",
-        "neighbor_rsrq",
-        "neighbor_sinr",
-
-        "lat",
-        "long"
-    )
-    fun addNeighborLteCsvRow(
-        sessionId: Int,
-        report: Int,
-
-        servingArfcn: Int?,
-        servingPci: Int?,
-        servingEci: Long?,
-
-        neighborIndex: Int,
-        neighborTech: String,
-        neighborArfcn: Int?,
-        neighborPci: Int?,
-        neighborRsrp: Int?,
-        neighborRsrq: Int?,
-        neighborSinr: Float?
-    ) {
-        if (!isRecordingNeighborCsv) return
-
-        val now = Date()
-        val sysTime =
-            SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(now)
-
-        val lat = latestLocation?.latitude?.toString() ?: ""
-        val lon = latestLocation?.longitude?.toString() ?: ""
-
-        val row = listOf(
-            sessionId.toString(),
-            sysTime,
-            report.toString(),
-
-            "LTE",
-            servingArfcn?.toString() ?: "",
-            servingPci?.toString() ?: "",
-            servingEci?.toString() ?: "",
-
-            neighborIndex.toString(),
-            neighborTech,
-            neighborArfcn?.toString() ?: "",
-            neighborPci?.toString() ?: "",
-            neighborRsrp?.toString() ?: "",
-            neighborRsrq?.toString() ?: "",
-            neighborSinr?.toString() ?: "",
-
-            lat,
-            lon
-        )
-
-        neighborLteCsvBuffer.add(row)
-    }
-
-    // ================== NEIGHBOR LTE CSV ==================
-    var isRecordingNeighborCsv = false
-    private val neighborLteCsvBuffer = mutableListOf<List<String>>()
 
 
 
@@ -225,6 +160,9 @@ class MainActivity : AppCompatActivity() {
         "latitude", "longitude"
     )
     var currentWifiReportId: Int = 0
+    private var wifiReportCounter: Int = 1
+    private var pendingWifiNeighborReportId: Int = 0
+    private var pendingWifiNeighborSysTime: String? = null
 
     // 2. Buffer สำหรับเก็บข้อมูลแถวของ Neighbor
     private val neighborCsvBuffer = mutableListOf<List<String>>()
@@ -232,6 +170,99 @@ class MainActivity : AppCompatActivity() {
     fun getNextReportId(): Int = reportCounter
     fun incrementReportCounter() {
         reportCounter++
+    }
+
+    fun beginWifiReportSession() {
+        wifiReportCounter = 1
+        currentWifiReportId = 0
+        pendingWifiNeighborReportId = 0
+        pendingWifiNeighborSysTime = null
+    }
+
+    fun allocateNextWifiServingReportId(): Int {
+        val id = wifiReportCounter
+        wifiReportCounter++
+        currentWifiReportId = id
+        pendingWifiNeighborReportId = id
+        pendingWifiNeighborSysTime = null
+        return id
+    }
+    fun allocateNextCellularServingReport(): Pair<Int, String> {
+
+        val reportId = cellularReportCounter++
+        val sysTime = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+            .format(Date())
+
+        pendingCellularReportId = reportId
+        pendingCellularSysTime = sysTime
+        isCellularSnapshotActive = true
+
+        return Pair(reportId, sysTime)
+    }
+    fun addCellularNeighborRowSafe(rowWithoutReport: List<String>) {
+
+        if (!isRecordingCsv) return
+
+        val reportId = pendingCellularReportId
+        val sysTime = pendingCellularSysTime
+
+        if (!isCellularSnapshotActive || reportId == null || sysTime == null) {
+            pendingCellularNeighborBuffer.add(rowWithoutReport)
+            return
+        }
+
+        val finalRow = listOf(
+            reportId.toString(),
+            rowWithoutReport[0], // neighbor_index
+            sysTime
+        ) + rowWithoutReport.drop(1)
+
+        neighborCsvBuffer.add(finalRow)
+    }
+    fun flushPendingCellularNeighbors() {
+
+        val reportId = pendingCellularReportId ?: return
+        val sysTime = pendingCellularSysTime ?: return
+
+        pendingCellularNeighborBuffer.forEach { rowWithoutReport ->
+
+            val finalRow = listOf(
+                reportId.toString(),
+                rowWithoutReport[0],
+                sysTime
+            ) + rowWithoutReport.drop(1)
+
+            neighborCsvBuffer.add(finalRow)
+        }
+
+        pendingCellularNeighborBuffer.clear()
+    }
+    fun clearPendingCellularSnapshot() {
+        pendingCellularReportId = null
+        pendingCellularSysTime = null
+        isCellularSnapshotActive = false
+        pendingCellularNeighborBuffer.clear()
+    }
+    fun beginCellularReportSession() {
+        cellularReportCounter = 1
+        pendingCellularReportId = null
+        pendingCellularSysTime = null
+        isCellularSnapshotActive = false
+        pendingCellularNeighborBuffer.clear()
+    }
+
+
+    fun getPendingWifiNeighborReportId(): Int? {
+        return pendingWifiNeighborReportId.takeIf { it > 0 }
+    }
+
+    fun getPendingWifiNeighborSysTime(): String? {
+        return pendingWifiNeighborSysTime
+    }
+
+    fun clearPendingWifiNeighborReportId() {
+        pendingWifiNeighborReportId = 0
+        pendingWifiNeighborSysTime = null
     }
 
     // 3. ฟังก์ชันสำหรับเพิ่มแถวข้อมูล (เรียกจาก Fragment)
@@ -254,8 +285,8 @@ class MainActivity : AppCompatActivity() {
         // ✅ แก้ตรงนี้บรรทัดเดียว
         saveCsv(
             fileName,
-            neighborLteCsvHeader,
-            neighborLteCsvBuffer,
+            neighborCsvHeader,   // ✅ ใช้ header ตัวนี้
+            neighborCsvBuffer,   // ✅ ใช้ buffer ตัวนี้
             "Cellular"
         )
         // เคลียร์ข้อมูลทิ้งหลังบันทึกเสร็จ
@@ -287,7 +318,6 @@ class MainActivity : AppCompatActivity() {
         // โซนที่ 2: สร้างหน้าจอ (Init UI & Fragments)
         // -------------------------------------------------
         setupButtons()
-        updateFloorButtonVisibility()
 
         if (savedInstanceState == null) {
             // วาง Fragment หลังจากตัวแปร (โซน 1) พร้อมแล้ว
@@ -465,59 +495,6 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSelectFloor)?.text = "Floor $startFloor"
     }
 
-    private fun updateFloorButtonVisibility() {
-        val isRecording = isRecordingCsv || isRecordingWifiCsv
-        findViewById<View>(R.id.btnSelectFloor)?.visibility =
-            if (isRecording) View.GONE else View.VISIBLE
-    }
-
-    private fun setStartHint(message: String?) {
-        val hint = findViewById<TextView>(R.id.startHintText)
-        if (message.isNullOrBlank()) {
-            startHintAnimator?.cancel()
-            hint.alpha = 1f
-            hint.visibility = View.GONE
-            return
-        }
-
-        hint.text = message
-        hint.visibility = View.VISIBLE
-
-        startHintAnimator?.cancel()
-        startHintAnimator = ObjectAnimator.ofFloat(hint, View.ALPHA, 1f, 0.25f, 1f).apply {
-            duration = 900
-            repeatCount = ValueAnimator.INFINITE
-            repeatMode = ValueAnimator.RESTART
-            start()
-        }
-    }
-
-    private fun promptEditFloorHeightBeforeStart(onProceed: () -> Unit) {
-        val input = android.widget.EditText(this)
-        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or
-            android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        input.setText(floorHeightMeters.toString())
-
-        androidx.appcompat.app.AlertDialog.Builder(this)
-            .setTitle("Floor Height (m)")
-            .setMessage("Adjust floor height before start")
-            .setView(input)
-            .setPositiveButton("Start") { _, _ ->
-                val value = input.text.toString().trim().toFloatOrNull()
-                if (value != null && value > 0f) {
-                    floorHeightMeters = value
-                    toast("Floor height: %.2f m".format(value))
-                    onProceed()
-                } else {
-                    toast("Invalid floor height")
-                }
-            }
-            .setNegativeButton("Cancel") { _, _ ->
-                toast("Start canceled")
-            }
-            .show()
-    }
-
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
@@ -619,21 +596,18 @@ class MainActivity : AppCompatActivity() {
                             calibrateAltitude(startFloor)
                             toast("Start floor = $startFloor")
 
-                            promptEditFloorHeightBeforeStart {
-                                // 👉 3) เริ่ม recording
-                                cellFrag.setGroundButtonsVisible(false)
-                                cellFrag.showGroundUiAfterStart()
+                            // 👉 3) เริ่ม recording
+                            cellFrag.setGroundButtonsVisible(false)
+                            cellFrag.showGroundUiAfterStart()
 
-                                currentCellularSessionId =
-                                    getNextSessionIdMaxPlusOne("Cellular")
+                            currentCellularSessionId =
+                                getNextSessionIdMaxPlusOne("Cellular")
 
-                                csvBuffer.clear()
-                                neighborCsvBuffer.clear()
-
-                                isRecordingCsv = true
-                                scanBtn.text = "STOP"
-                                updateFloorButtonVisibility()
-                            }
+                            csvBuffer.clear()
+                            neighborCsvBuffer.clear()
+                            beginCellularReportSession()
+                            isRecordingCsv = true
+                            scanBtn.text = "STOP"
                         }
 
                     } else {
@@ -641,12 +615,11 @@ class MainActivity : AppCompatActivity() {
                         // STOP (เหมือนเดิม)
                         isRecordingCsv = false
                         scanBtn.text = "START"
-                        updateFloorButtonVisibility()
 
                         saveCellularCsv()
                         saveNeighborCsv()
                         currentCellularSessionId = null
-
+                        clearPendingCellularSnapshot()
                         cellFrag.setGroundButtonsVisible(true)
                         toast("All CSVs saved")
                     }
@@ -666,25 +639,22 @@ class MainActivity : AppCompatActivity() {
                             calibrateAltitude(selectedFloor)
                             toast("Start floor = $selectedFloor")
 
-                            promptEditFloorHeightBeforeStart {
-                                fragment.setGroundButtonsVisible(false)
-                                fragment.showGroundUiAfterStart()
+                            fragment.setGroundButtonsVisible(false)
+                            fragment.showGroundUiAfterStart()
 
-                                currentWifiSessionId =
-                                    getNextSessionIdMaxPlusOne("Wifi")
+                            currentWifiSessionId =
+                                getNextSessionIdMaxPlusOne("Wifi")
 
-                                wifiCsvBuffer.clear()
-                                wifiNeighborCsvBuffer.clear()
-                                isRecordingWifiCsv = true
-                                scanBtn.text = "STOP"
-                                updateFloorButtonVisibility()
-                            }
+                            wifiCsvBuffer.clear()
+                            wifiNeighborCsvBuffer.clear()
+                            isRecordingWifiCsv = true
+                            beginWifiReportSession()
+                            scanBtn.text = "STOP"
                         }
 
                     } else {
                         isRecordingWifiCsv = false
                         scanBtn.text = "START"
-                        updateFloorButtonVisibility()
 
                         if (!canWriteLegacyStorage()) {
                             toast("Storage permission required")
@@ -789,8 +759,11 @@ class MainActivity : AppCompatActivity() {
             gpsFloor = (startFloor + (rel / floorHeightMeters).roundToInt()).toString()
         }
 
+        val reportId = allocateNextWifiServingReportId()
+        pendingWifiNeighborSysTime = sysTime
+
         val row = listOf(
-            wifiCsvBuffer.size.toString(),              // report
+            reportId.toString(),                        // report (sync with WiFi Neighbor)
             sysTime,                                    // sys_time
             loc?.latitude?.toString() ?: "",            // lat
             loc?.longitude?.toString() ?: "",           // long
@@ -911,12 +884,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStartButtonState() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
+        val hint = findViewById<TextView>(R.id.startHintText)
 
         // ถ้ากำลังอัด → START ต้องกดได้ และไม่ต้องมีข้อความเตือน
         if (isRecordingCsv || isRecordingWifiCsv) {
             scanBtn.isEnabled = true
             scanBtn.alpha = 1f
-            setStartHint(null)
+            hint.visibility = View.GONE
             return
         }
 
@@ -940,19 +914,21 @@ class MainActivity : AppCompatActivity() {
                     !gpsOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        setStartHint("Please turn on GPS")
+                        hint.text = "Please turn on GPS"
+                        hint.visibility = View.VISIBLE
                     }
 
                     !inService -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        setStartHint("Cellular service not ready")
+                        hint.text = "Cellular service not ready"
+                        hint.visibility = View.VISIBLE
                     }
 
                     else -> {
                         scanBtn.isEnabled = true
                         scanBtn.alpha = 1f
-                        setStartHint(null)
+                        hint.visibility = View.GONE
                     }
                 }
             }
@@ -974,25 +950,28 @@ class MainActivity : AppCompatActivity() {
                     !wifiOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        setStartHint("Please turn on Wi-Fi")
+                        hint.text = "Please turn on Wi-Fi"
+                        hint.visibility = View.VISIBLE
                     }
 
                     !gpsOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        setStartHint("Please turn on GPS")
+                        hint.text = "Please turn on GPS"
+                        hint.visibility = View.VISIBLE
                     }
                     !isConnected -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        setStartHint("Please connect to Wi-Fi")
+                        hint.text = "Please connect to Wi-Fi"
+                        hint.visibility = View.VISIBLE
                     }
 
 
                     else -> {
                         scanBtn.isEnabled = true
                         scanBtn.alpha = 1f
-                        setStartHint(null)
+                        hint.visibility = View.GONE
                     }
                 }
             }
@@ -1000,7 +979,7 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 scanBtn.isEnabled = false
                 scanBtn.alpha = 0.4f
-                setStartHint(null)
+                hint.visibility = View.GONE
             }
         }
     }
@@ -1179,7 +1158,7 @@ class MainActivity : AppCompatActivity() {
         isGroundSet = true
         updateFloorButtonLabel()
     }
-    //เพิ่มฟังก์ชันตรวจ LTE CAnnn
+    //เพิ่มฟังก์ชันตรวจ LTE CA
     @SuppressLint("MissingPermission")
     fun isLteCaActiveCompat(): Boolean {
         // 1. ดึง TelephonyManager เพื่อเข้าถึงข้อมูลเครือข่าย

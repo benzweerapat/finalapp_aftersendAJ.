@@ -421,12 +421,9 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     }
     private fun recordWifiNeighbors(results: List<ScanResult>) {
         if (mainActivity.isRecordingWifiCsv) {
-            // ใช้เลข Report ล่าสุดจาก MainActivity
-            val reportId = mainActivity.currentWifiReportId
-
-            val now = Date()
-            val sysTime =
-                SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
+            // ใช้เลข Report ของ Serving รอบล่าสุดเท่านั้น
+            val reportId = mainActivity.getPendingWifiNeighborReportId() ?: return
+            val sysTime = mainActivity.getPendingWifiNeighborSysTime() ?: return
             val loc = mainActivity.latestLocation
 
             // ข้อมูลตัวที่เชื่อมต่ออยู่ปัจจุบัน
@@ -457,13 +454,14 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                     nIdx++
                 }
             }
+            mainActivity.clearPendingWifiNeighborReportId()
         }
     }
     // วางไว้ภายใน class WifiFragment
     private fun updateWifiNeighborsCsv(results: List<ScanResult>) {
         if (mainActivity.isRecordingWifiCsv) {
             // 1. ดึงเลข Report ปัจจุบัน (ใช้ร่วมกับไฟล์ WiFi หลัก)
-            val reportId = mainActivity.getNextReportId()
+            val reportId = mainActivity.getPendingWifiNeighborReportId() ?: return
             val now = Date()
             val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(now)
             val loc = mainActivity.latestLocation
@@ -510,7 +508,6 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     /* ================= Core ================= */
     @SuppressLint("MissingPermission")
     private fun scanWifi() {
-
         // ❗ กันไว้ตั้งแต่บรรทัดแรก
         if (!hasWifiPermission()) {
             wifiSsid?.text = "Wi-Fi permission required"
@@ -602,10 +599,6 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 wifiSecurity?.text = scan.capabilities
             }
         }
-        // 🔒 กำหนด report ครั้งนี้
-        mainActivity.currentWifiReportId = mainActivity.getNextReportId()
-
-
         mainActivity.addWifiCsvRow(
             ssid = currentSsid,
             freq = freq,
@@ -729,12 +722,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 .sortedByDescending { it.level }
                 .take(50)
         )
-        // 1️⃣ เขียน Neighbor (ใช้ report เดียวกับ Serving)
-        recordWifiNeighbors(results)
-
-        // 2️⃣ ปิดรอบ → ค่อย increment
         if (mainActivity.isRecordingWifiCsv) {
-            mainActivity.incrementReportCounter()
+            recordWifiNeighbors(results)
         }
     }
 

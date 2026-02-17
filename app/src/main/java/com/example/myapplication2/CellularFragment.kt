@@ -83,7 +83,7 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                 val tm = requireContext()
                     .getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
 
-                updateStatusIcons(tm) // ✅ เพิ่มบรรทัดนี้
+                updateStatusIcons(tm)
 
                 updateCellularInfo()
                 updateLocationAndSensors()
@@ -515,118 +515,106 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         }
         neighborAdapter.setData(neighborList)
         updateStatusIcons(tm)
+        if (mainActivity.isRecordingCsv && servingFound) {
 
-        if (mainActivity.isRecordingCsv) {
-            val reportId = mainActivity.getNextReportId()
-            val now = Date()
-            val sysTime = SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(now)
+            val (reportId, sysTime) =
+                mainActivity.allocateNextCellularServingReport()
+
             val loc = mainActivity.latestLocation
-
-            // [แก้ไข] ใส่ Logic ดึง System Info กลับมา
             val serviceState = try { tm.serviceState } catch (_: Exception) { null }
+
             val simState = simStateName(tm.simState)
             val svcState = svcStateName(serviceState?.state ?: -1)
             val nrState = nrStateNameCompat(serviceState)
             val roaming = if (serviceState?.roaming == true) "1" else "0"
             val callState = callStateName(tm.callState)
             val dataState = dataStateName(tm.dataState)
-            val dataAct = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) netTypeName(tm.dataNetworkType) else netTypeName(tm.networkType)
+            val dataAct =
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N)
+                    netTypeName(tm.dataNetworkType)
+                else netTypeName(tm.networkType)
 
-            // [แก้ไข] Mapping ข้อมูลลง 65 คอลัมน์ (0-64)
             val row = mutableListOf<String>()
-            row.add(reportId.toString()) // ✅
-            // 0
-            row.add(sysTime)  // 1
-            row.add(simState) // 2
-            row.add(svcState) // 3
-            row.add(nrState)  // 4
-            row.add(tm.networkOperatorName ?: "") // 5
 
-            row.add(tm.networkOperator ?: "") // 6
-            row.add(roaming) // 7
-            row.add(dataAct) // 8
-            row.add(callState) // 9
-            row.add(dataState) // 10
-            row.add(dataAct) // 11
-            row.add("0") // 12 rx
-            row.add("0") // 13 tx
-            row.add(""); row.add(""); row.add(""); row.add(""); row.add("") // 14-18 neighbors
-            row.add(if(techCsv=="LTE") rsrpStr else if(techCsv=="NR") nrssRsrp else "") // 19 rssi_strongest
-            row.add("") // 20 nstrong
-            row.add(techCsv) // 21 tech
-            row.add(mcc) // 22
-            row.add(mnc) // 23
-            row.add(mnc) // 24 mnc_master
-            row.add(lacTac) // 25
-            row.add(longCid) // 26
-            row.add(nodeIdNid) // 27
-            row.add(cidBid) // 28
-            row.add(pscPci) // 29
-            row.add(nrTac) // 30
-            row.add(nrNci) // 31
-            row.add(nrPci) // 32
-            row.add(nrArfcnStr) // 33
-            row.add(if(techCsv=="LTE") rsrpStr else "") // 34 rssi
-            row.add(if(techCsv=="LTE") rsrqStr else "") // 35 rsrq
-            row.add("") // 36 rssi_ev
-            row.add("") // 37 ecio_ev
-            row.add(rssnrStr) // 38 rssnr
-            row.add(nrssRsrp) // 39
-            row.add(nrssRsrq) // 40
-            row.add(nrssSinr) // 41
-            row.add("") // 42 nrcsirsrp
-            row.add("") // 43
-            row.add("") // 44
-            row.add("") // 45 slev
-            row.add(taStr) // 46 ta
-            row.add(if (loc!=null) "1" else "0") // 47 gps
-            row.add(loc?.accuracy?.toString() ?: "") // 48
-            row.add(loc?.latitude?.toString() ?: "") // 49
-            row.add(loc?.longitude?.toString() ?: "") // 50
-            row.add(loc?.altitude?.toString() ?: "") // 51
-            row.add(loc?.speed?.toString() ?: "") // 52
-            row.add(loc?.bearing?.toString() ?: "") // 53
-            row.add(bandCsv) // 54 band
-            row.add(arfcnStr) // 55 arfcn
-            row.add(bwStr) // 56 bw
-            row.add("") // 57 bwlist
-            row.add("") // 58 thp_rx
-            row.add("") // 59 thp_tx
-            row.add("%.2f".format(mainActivity.currentFilteredPressure)) // 60
-            row.add(textAltitude?.text.toString().replace("Rel. Height: ","").replace(" m","")) // 61
-            row.add(textFloor?.text.toString().replace("Floor: ","")) // 62
-            row.add(textGpsRelHeight?.text.toString().replace("Rel. Height: ","").replace(" m","")) // 63
-            row.add(textGpsFloor?.text.toString().replace("Floor: ","")) // 64
+            row.add(reportId.toString())
+            row.add(sysTime)
+
+            row.add(simState)
+            row.add(svcState)
+            row.add(nrState)
+            row.add(tm.networkOperatorName ?: "")
+            row.add(tm.networkOperator ?: "")
+            row.add(roaming)
+            row.add(dataAct)
+            row.add(callState)
+            row.add(dataState)
+            row.add(dataAct)
+
+            row.add("0"); row.add("0")
+            row.add(""); row.add(""); row.add(""); row.add(""); row.add("")
+            row.add(if(techCsv=="LTE") rsrpStr else if(techCsv=="NR") nrssRsrp else "")
+            row.add("")
+            row.add(techCsv)
+            row.add(mcc)
+            row.add(mnc)
+            row.add(mnc)
+            row.add(lacTac)
+            row.add(longCid)
+            row.add(nodeIdNid)
+            row.add(cidBid)
+            row.add(pscPci)
+            row.add(nrTac)
+            row.add(nrNci)
+            row.add(nrPci)
+            row.add(nrArfcnStr)
+            row.add(if(techCsv=="LTE") rsrpStr else "")
+            row.add(if(techCsv=="LTE") rsrqStr else "")
+            row.add("")
+            row.add("")
+            row.add(rssnrStr)
+            row.add(nrssRsrp)
+            row.add(nrssRsrq)
+            row.add(nrssSinr)
+            row.add("")
+            row.add("")
+            row.add("")
+            row.add("")
+            row.add(taStr)
+            row.add(if (loc!=null) "1" else "0")
+            row.add(loc?.accuracy?.toString() ?: "")
+            row.add(loc?.latitude?.toString() ?: "")
+            row.add(loc?.longitude?.toString() ?: "")
+            row.add(loc?.altitude?.toString() ?: "")
+            row.add(loc?.speed?.toString() ?: "")
+            row.add(loc?.bearing?.toString() ?: "")
+            row.add(bandCsv)
+            row.add(arfcnStr)
+            row.add(bwStr)
+            row.add("")
+            row.add("")
+            row.add("")
+            row.add("%.2f".format(mainActivity.currentFilteredPressure))
+            row.add(textAltitude?.text.toString().replace("Rel. Height: ","").replace(" m",""))
+            row.add(textFloor?.text.toString().replace("Floor: ",""))
+            row.add(textGpsRelHeight?.text.toString().replace("Rel. Height: ","").replace(" m",""))
+            row.add(textGpsFloor?.text.toString().replace("Floor: ",""))
 
             mainActivity.addCsvRow(row)
-        }
-        // --- เริ่มวางโค้ดที่คุณเขียนมาตรงนี้ ---
-        if (mainActivity.isRecordingCsv) {
-            // อัปเดตเลข report สำหรับรอบการสแกนนี้ (ทำครั้งเดียวต่อวินาที)
-            // หมายเหตุ: ควรให้ MainActivity เป็นคน ++ reportCounter ในฝั่งบันทึก Serving
-            val reportId = mainActivity.getNextReportId()
-
-            val now = Date()
-            val sysTime = SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(now)
-            val loc = mainActivity.latestLocation
-
-            val sTech = techCsv
-            val sArfcn = arfcnStr
-            val sPci = pscPci
-            val sCid = longCid
-
             var nIdx = 1
-            // allInfo คือ List<CellInfo> ที่ได้จาก telephonyManager.allCellInfo
-            for (ci in allInfo) {
-                if (!ci.isRegistered) { // neighbor เท่านั้น
-                    val nRow = mutableListOf<String>()
-                    nRow.add(reportId.toString()) // ✅
 
-                    nRow.add(nIdx.toString())
-                    nRow.add(sysTime)
-                    nRow.add(sTech); nRow.add(sArfcn); nRow.add(sPci); nRow.add(sCid)
+            for (ci in allInfo) {
+                if (!ci.isRegistered) {
+
+                    val nRow = mutableListOf<String>()
+
+                    nRow.add(nIdx.toString()) // neighbor_index
+                    nRow.add(techCsv)
+                    nRow.add(arfcnStr)
+                    nRow.add(pscPci)
+                    nRow.add(longCid)
 
                     when (ci) {
+
                         is CellInfoLte -> {
                             val id = ci.cellIdentity
                             val ss = ci.cellSignalStrength
@@ -658,14 +646,16 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                     nRow.add(loc?.latitude?.toString() ?: "")
                     nRow.add(loc?.longitude?.toString() ?: "")
 
+                    mainActivity.addCellularNeighborRowSafe(nRow)
 
-                    mainActivity.addNeighborCsvRow(nRow)
                     nIdx++
                 }
             }
+
+            mainActivity.flushPendingCellularNeighbors()
         }
-        // --- จบการวางโค้ด ---
-        mainActivity.incrementReportCounter()
+
+
     }
 
     // --- Helper Functions ---
