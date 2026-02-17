@@ -49,6 +49,8 @@ class MainActivity : AppCompatActivity() {
     var referencePressure: Float = -1f
     var referenceGpsAltitude: Double? = null
     var floorHeightMeters: Float = 3.5f
+    var hasSelectedFloorHeight: Boolean = false
+    var hasSelectedStartFloor: Boolean = false
 
     var startFloor: Int = 1   // ชั้นเริ่มต้น (ผู้ใช้เลือก)
 
@@ -492,7 +494,45 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateFloorButtonLabel() {
-        findViewById<Button>(R.id.btnSelectFloor)?.text = "Floor $startFloor"
+        val label = if (hasSelectedStartFloor) "Floor $startFloor" else "Floor --"
+        findViewById<Button>(R.id.btnSelectFloor)?.text = label
+    }
+
+    fun getFloorHeightButtonLabel(): String {
+        return if (hasSelectedFloorHeight) {
+            "Height = ${"%.1f".format(Locale.US, floorHeightMeters)} m"
+        } else {
+            "Edit Height"
+        }
+    }
+
+    fun refreshFloorHeightButtonLabel() {
+        when (val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)) {
+            is CellularFragment -> fragment.updateEditHeightButtonLabel(getFloorHeightButtonLabel())
+            is WifiFragment -> fragment.updateEditHeightButtonLabel(getFloorHeightButtonLabel())
+        }
+    }
+
+    fun onFloorHeightSelected(heightMeters: Float) {
+        floorHeightMeters = heightMeters
+        hasSelectedFloorHeight = true
+        refreshFloorHeightButtonLabel()
+    }
+
+    private fun validateSelectionsBeforeStart(): Boolean {
+        if (!hasSelectedStartFloor && !hasSelectedFloorHeight) {
+            toast("Please select Floor and Edit Height before START")
+            return false
+        }
+        if (!hasSelectedStartFloor) {
+            toast("Please select Floor before START")
+            return false
+        }
+        if (!hasSelectedFloorHeight) {
+            toast("Please select Edit Height before START")
+            return false
+        }
+        return true
     }
 
     // ================== BUTTONS ==================
@@ -501,6 +541,8 @@ class MainActivity : AppCompatActivity() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
         val btnSelectFloor =
             findViewById<Button>(R.id.btnSelectFloor)
+        updateFloorButtonLabel()
+        refreshFloorHeightButtonLabel()
         btnSelectFloor.setOnClickListener {
             if (isRecordingCsv || isRecordingWifiCsv) {
                 toast("Stop recording before changing floor")
@@ -588,27 +630,19 @@ class MainActivity : AppCompatActivity() {
                     val cellFrag = fragment as CellularFragment
 
                     if (!isRecordingCsv) {
+                        if (!validateSelectionsBeforeStart()) return@setOnClickListener
 
-                        // 👉 1) ถามชั้นเริ่มต้นก่อน
-                        showStartFloorDialog { startFloor ->
+                        cellFrag.setGroundButtonsVisible(false)
+                        cellFrag.showGroundUiAfterStart()
 
-                            // 👉 2) ค่อย calibrate
-                            calibrateAltitude(startFloor)
-                            toast("Start floor = $startFloor")
+                        currentCellularSessionId =
+                            getNextSessionIdMaxPlusOne("Cellular")
 
-                            // 👉 3) เริ่ม recording
-                            cellFrag.setGroundButtonsVisible(false)
-                            cellFrag.showGroundUiAfterStart()
-
-                            currentCellularSessionId =
-                                getNextSessionIdMaxPlusOne("Cellular")
-
-                            csvBuffer.clear()
-                            neighborCsvBuffer.clear()
-                            beginCellularReportSession()
-                            isRecordingCsv = true
-                            scanBtn.text = "STOP"
-                        }
+                        csvBuffer.clear()
+                        neighborCsvBuffer.clear()
+                        beginCellularReportSession()
+                        isRecordingCsv = true
+                        scanBtn.text = "STOP"
 
                     } else {
 
@@ -631,26 +665,21 @@ class MainActivity : AppCompatActivity() {
                 is WifiFragment -> {
 
                     if (!isRecordingWifiCsv) {
+                        if (!validateSelectionsBeforeStart()) return@setOnClickListener
 
                         val fragment = fragment as WifiFragment
 
-                        showStartFloorDialog { selectedFloor ->
+                        fragment.setGroundButtonsVisible(false)
+                        fragment.showGroundUiAfterStart()
 
-                            calibrateAltitude(selectedFloor)
-                            toast("Start floor = $selectedFloor")
+                        currentWifiSessionId =
+                            getNextSessionIdMaxPlusOne("Wifi")
 
-                            fragment.setGroundButtonsVisible(false)
-                            fragment.showGroundUiAfterStart()
-
-                            currentWifiSessionId =
-                                getNextSessionIdMaxPlusOne("Wifi")
-
-                            wifiCsvBuffer.clear()
-                            wifiNeighborCsvBuffer.clear()
-                            isRecordingWifiCsv = true
-                            beginWifiReportSession()
-                            scanBtn.text = "STOP"
-                        }
+                        wifiCsvBuffer.clear()
+                        wifiNeighborCsvBuffer.clear()
+                        isRecordingWifiCsv = true
+                        beginWifiReportSession()
+                        scanBtn.text = "STOP"
 
                     } else {
                         isRecordingWifiCsv = false
@@ -1155,6 +1184,7 @@ class MainActivity : AppCompatActivity() {
             referenceGpsAltitude = latestLocation!!.altitude
         }
         startFloor = selectedStartFloor
+        hasSelectedStartFloor = true
         isGroundSet = true
         updateFloorButtonLabel()
     }

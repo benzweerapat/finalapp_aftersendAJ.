@@ -166,6 +166,7 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
+        updateEditHeightButtonLabel(mainActivity.getFloorHeightButtonLabel())
 
         btnCalibrate?.setOnClickListener {
 
@@ -280,12 +281,16 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
             .setPositiveButton("Save") { _, _ ->
                 val v = input.text.toString().toFloatOrNull()
                 if (v != null && v > 0) {
-                    mainActivity.floorHeightMeters = v
+                    mainActivity.onFloorHeightSelected(v)
                     mainActivity.toast("Saved: $v m")
                 }
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    fun updateEditHeightButtonLabel(label: String) {
+        (btnEditFloorHeight as? TextView)?.text = label
     }
 
     override fun onResume() {

@@ -261,6 +261,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
+        updateEditHeightButtonLabel(mainActivity.getFloorHeightButtonLabel())
 
         // RecyclerView
         view.findViewById<RecyclerView>(R.id.wifiNeighborsRecycler).apply {
@@ -354,7 +355,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             .setPositiveButton("Save") { _, _ ->
                 val v = input.text.toString().toFloatOrNull()
                 if (v != null && v > 0f) {
-                    mainActivity.floorHeightMeters = v
+                    mainActivity.onFloorHeightSelected(v)
                     mainActivity.toast("Saved: $v m")
                 } else {
                     mainActivity.toast("Invalid floor height")
@@ -362,6 +363,10 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    fun updateEditHeightButtonLabel(label: String) {
+        (btnEditFloorHeight as? TextView)?.text = label
     }
 
     override fun onResume() {
