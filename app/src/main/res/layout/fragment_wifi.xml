@@ -598,8 +598,8 @@
                             android:textSize="9sp"
                             android:maxLines="1"
                             android:ellipsize="end"
-                            android:textColor="#9CA3AF"
-                            app:strokeColor="#4B5563"
+                            android:textColor="#FB923C"
+                            app:strokeColor="#F97316"
                             app:strokeWidth="1dp"
                             app:cornerRadius="16dp" />
                     </LinearLayout>
