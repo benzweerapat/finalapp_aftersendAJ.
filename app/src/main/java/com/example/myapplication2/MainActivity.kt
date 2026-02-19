@@ -119,16 +119,12 @@ class MainActivity : AppCompatActivity() {
     val csvHeader = listOf(
         "report","sys_time","sim_state","service_state","nr_state",
         "net_op_name","net_op_code","roaming","net_type","call_state",
-        "data_state","data_act","data_rx","data_tx","gsm_neighbors",
-        "umts_neighbors","lte_neighbors","nr_neighbors","cdma_neighbors","rssi_strongest",
-        "nstrong","tech","mcc","mnc","mnc_master",
+        "data_state","rssi_strongest","tech","mcc","mnc","mnc_master",
         "lac_tac_sid","long_cid","node_id_nid","cid_bid","psc_pci",
         "nrtac","nrnci","nrpci","nrarfcn","rssi",
-        "rsrq","rssi_ev","ecio_ev","rssnr","nrssrsrp",
-        "nrssrsrq","nrsssinr","nrcsirsrp","nrcsirsrq","nrcsisinr",
-        "slev","ta","gps","accuracy","lat",
-        "long","altitude","speed","bearing","band",
-        "arfcn","bw","bwlist","thp_rx","thp_tx",
+        "rsrq","rssnr","nrssrsrp","nrssrsrq","nrsssinr",
+        "ta","gps","accuracy","lat","long","altitude","speed","bearing",
+        "band","arfcn","bw",
         "baro_pressure","baro_rel_alt","baro_floor","gps_rel_alt","gps_floor"
     )
 
@@ -738,9 +734,9 @@ class MainActivity : AppCompatActivity() {
         if (isRecordingCsv) {
             csvBuffer.add(row)
 
-            // ✅ col 21 = tech
-            if (row.size > 21) {
-                servingTechForFileName = row[21]
+            val techIndex = csvHeader.indexOf("tech")
+            if (techIndex >= 0 && row.size > techIndex) {
+                servingTechForFileName = row[techIndex]
             }
         }
     }
