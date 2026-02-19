@@ -452,6 +452,7 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
                     techCsv =
                         if (mainActivity.isLteCaActiveCompat()) "LTE_CA"
                         else "LTE"
+                    bandCsv = lteBandNumber(earfcn)
                     rsrpStr = "${ss.rsrp}"; rsrqStr = "${ss.rsrq}"; arfcnStr = "${earfcn ?: ""}"
                     mcc = mccStr; mnc = mncStr
                     lacTac = "${id.tac}"; longCid = "${id.ci}"; pscPci = "${id.pci}"
