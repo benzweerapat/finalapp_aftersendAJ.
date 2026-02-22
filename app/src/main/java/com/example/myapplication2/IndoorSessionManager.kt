@@ -22,6 +22,18 @@ data class IndoorCheckpoint(
     val source: String
 )
 
+data class IndoorTestPoint(
+    val timestamp: String,
+    val floorLabel: String,
+    val pointNo: Int,
+    val mapX: Float,
+    val mapY: Float,
+    val networkType: String,
+    val cellIdBssid: String,
+    val rsrpRssi: Int,
+    val rsrqSinr: Int
+)
+
 object IndoorSessionManager {
     enum class RadioMode { CELLULAR, WIFI }
 
@@ -29,6 +41,7 @@ object IndoorSessionManager {
     var radioMode: RadioMode = RadioMode.CELLULAR
     var importedFloorPlanUri: Uri? = null
     val plottedPointsNormalized: MutableList<Pair<Double, Double>> = mutableListOf()
+    val points: MutableList<IndoorTestPoint> = mutableListOf()
     val checkpoints: MutableList<IndoorCheckpoint> = mutableListOf()
 
     fun addPlotPoint(nx: Double, ny: Double) {
@@ -37,5 +50,7 @@ object IndoorSessionManager {
 
     fun clearWalk() {
         checkpoints.clear()
+        points.clear()
+        plottedPointsNormalized.clear()
     }
 }

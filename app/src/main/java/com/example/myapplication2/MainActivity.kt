@@ -584,8 +584,8 @@ class MainActivity : AppCompatActivity() {
                     .replace(R.id.fragment_container, IndoorWalkFragment())
                     .commit()
                 findViewById<Button>(R.id.saveCsvButton).apply {
-                    isEnabled = true
-                    text = "START"
+                    isEnabled = false
+                    text = "Use End Survey"
                 }
                 updateCurrentModeLabel("${IndoorSessionManager.radioMode.name} (Indoor Walk Test)")
             } else {
@@ -742,14 +742,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 is IndoorWalkFragment -> {
-                    val indoor = fragment as IndoorWalkFragment
-                    if (!indoor.isSurveyActive()) {
-                        indoor.startSurvey()
-                        scanBtn.text = "STOP"
-                    } else {
-                        indoor.stopSurveyAndExport()
-                        scanBtn.text = "START"
-                    }
+                    toast("Indoor Walk ใช้ปุ่ม End Survey / Export CSV ในหน้าแผนที่")
                 }
 
                 // ================= WIFI =================

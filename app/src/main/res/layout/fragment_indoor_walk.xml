@@ -1,71 +1,112 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:background="#121212"
-    android:padding="12dp">
+    android:background="#121212">
 
-    <FrameLayout
+    <com.example.myapplication2.IndoorPlotImageView
+        android:id="@+id/indoorMapView"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
-
-        <ImageView
-            android:id="@+id/walkFloorImage"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitCenter"
-            android:src="@drawable/floor_plan_placeholder" />
-
-        <com.example.myapplication2.FloorPlanOverlayView
-            android:id="@+id/walkOverlay"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </FrameLayout>
-
-    <TextView
-        android:id="@+id/textRealtimeSignal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#E2E8F0"
-        android:text="Signal: -"
-        android:layout_marginTop="8dp" />
-
-    <TextView
-        android:id="@+id/textWalkStats"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#93C5FD"
-        android:text="Pins/Checkpoints: 0"
-        android:layout_marginTop="4dp" />
+        android:layout_height="match_parent"
+        android:background="#0B1220" />
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginTop="10dp">
+        android:padding="10dp"
+        android:background="#AA111827"
+        android:gravity="center_vertical">
 
         <Button
-            android:id="@+id/btnCheckpoint"
+            android:id="@+id/btnBrowseFloorPlan"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Browse Floor Plan"
+            android:textAllCaps="false"
+            android:textSize="11sp" />
+
+        <Space
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Add Pin/Checkpoint" />
+            android:layout_height="1dp"
+            android:layout_weight="1" />
 
         <Button
-            android:id="@+id/btnUndoPin"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Undo Pin" />
+            android:id="@+id/btnUndo"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="Undo"
+            android:textAllCaps="false"
+            android:textSize="11sp" />
 
         <Button
-            android:id="@+id/btnStopAndExport"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Stop &amp; Export" />
+            android:id="@+id/btnExportCsv"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:layout_marginStart="6dp"
+            android:text="Export CSV"
+            android:textAllCaps="false"
+            android:textSize="11sp" />
     </LinearLayout>
 
-</LinearLayout>
+    <androidx.cardview.widget.CardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="10dp"
+        app:cardBackgroundColor="#CC1E1E1E"
+        app:cardCornerRadius="12dp"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <TextView
+                android:id="@+id/textSignalMain"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RSRP -- dBm"
+                android:textColor="#FDE68A"
+                android:textStyle="bold"
+                android:textSize="18sp" />
+
+            <TextView
+                android:id="@+id/textSignalSub"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="LTE • PCI:- • RSRQ/SINR --"
+                android:textColor="#E5E7EB"
+                android:textSize="12sp"
+                android:layout_marginTop="4dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/textPointCount"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Points: 0"
+                    android:textColor="#93C5FD"
+                    android:textSize="12sp"/>
+
+                <Button
+                    android:id="@+id/btnEndSurvey"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="End Survey"
+                    android:textAllCaps="false"
+                    android:textSize="12sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+</FrameLayout>

@@ -2,89 +2,110 @@ package com.example.myapplication2
 
 import android.content.ContentValues
 import android.net.Uri
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.Looper
 import android.provider.MediaStore
-import android.view.MotionEvent
+import android.telephony.CellInfoLte
+import android.telephony.CellInfoNr
+import android.telephony.TelephonyManager
 import android.view.View
 import android.widget.Button
-import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlin.math.hypot
 
 class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
-    private lateinit var mapImage: ImageView
-    private lateinit var overlay: FloorPlanOverlayView
-    private lateinit var textRealtime: TextView
-    private lateinit var textStats: TextView
+    private lateinit var mapView: IndoorPlotImageView
+    private lateinit var textSignalMain: TextView
+    private lateinit var textSignalSub: TextView
+    private lateinit var textPointCount: TextView
 
-    private val rawTaps = mutableListOf<Pair<Double, Double>>()
-    private var stepMeters = 1.0
-    private var pendingTap: Pair<Double, Double>? = null
-    private var surveyActive: Boolean = false
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var surveyActive = true
 
-    fun isSurveyActive(): Boolean = surveyActive
+    private val pickFloorPlanLauncher =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                IndoorSessionManager.importedFloorPlanUri = uri
+                mapView.setImageFromUri(uri)
+            }
+        }
 
-    fun startSurvey() {
-        surveyActive = true
-        Toast.makeText(requireContext(), "Indoor survey started", Toast.LENGTH_SHORT).show()
-        refreshUi()
-    }
-
-    fun stopSurveyAndExport() {
-        if (!surveyActive) return
-        surveyActive = false
-        exportCsv()
-        Toast.makeText(requireContext(), "Indoor survey stopped", Toast.LENGTH_SHORT).show()
-        refreshUi()
-    }
-
-    fun setRadioMode(mode: IndoorSessionManager.RadioMode) {
-        IndoorSessionManager.radioMode = mode
-        refreshSignalLabel()
+    private val signalTicker = object : Runnable {
+        override fun run() {
+            if (!isAdded) return
+            refreshSignalPanel()
+            uiHandler.postDelayed(this, 1000)
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        mapImage = view.findViewById(R.id.walkFloorImage)
-        overlay = view.findViewById(R.id.walkOverlay)
-        textRealtime = view.findViewById(R.id.textRealtimeSignal)
-        textStats = view.findViewById(R.id.textWalkStats)
+        mapView = view.findViewById(R.id.indoorMapView)
+        textSignalMain = view.findViewById(R.id.textSignalMain)
+        textSignalSub = view.findViewById(R.id.textSignalSub)
+        textPointCount = view.findViewById(R.id.textPointCount)
 
         ensureDefaultConfigIfMissing()
-        mapImage.setImageURI(IndoorSessionManager.config?.imageUri)
-        refreshSignalLabel()
+        mapView.setImageFromUri(IndoorSessionManager.importedFloorPlanUri ?: IndoorSessionManager.config?.imageUri)
+        mapView.setPlotEnabled(true)
+        mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
 
-        mapImage.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_UP) {
-                if (!surveyActive) {
-                    Toast.makeText(requireContext(), "กด START ก่อนเริ่มบันทึก Indoor", Toast.LENGTH_SHORT).show()
-                    return@setOnTouchListener true
-                }
-                val n = NormalizedCoordinateMapper.viewToNormalized(mapImage, event.x, event.y) ?: return@setOnTouchListener true
-                pendingTap = n
-                Toast.makeText(requireContext(), "เลือกตำแหน่งแล้ว กด Add Pin/Checkpoint เพื่อบันทึก", Toast.LENGTH_SHORT).show()
+        mapView.onPointAdded = { nx, ny ->
+            if (!surveyActive) {
+                Toast.makeText(requireContext(), "Survey ended", Toast.LENGTH_SHORT).show()
+                return@onPointAdded
             }
-            true
+            recordPoint(nx.toFloat(), ny.toFloat())
+            mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
+            updatePointCount()
         }
 
-        view.findViewById<Button>(R.id.btnUndoPin).setOnClickListener { undoPin() }
-        view.findViewById<Button>(R.id.btnCheckpoint).setOnClickListener { saveCheckpoint() }
-        view.findViewById<Button>(R.id.btnStopAndExport).apply {
-            visibility = View.GONE
-            setOnClickListener { stopSurveyAndExport() }
+        view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
+            pickFloorPlanLauncher.launch("image/*")
         }
 
-        refreshUi()
+        view.findViewById<Button>(R.id.btnUndo).setOnClickListener {
+            if (IndoorSessionManager.points.isNotEmpty()) {
+                IndoorSessionManager.points.removeLast()
+                mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
+                updatePointCount()
+            }
+        }
+
+        view.findViewById<Button>(R.id.btnExportCsv).setOnClickListener {
+            exportCsv(showToast = true)
+        }
+
+        view.findViewById<Button>(R.id.btnEndSurvey).setOnClickListener {
+            surveyActive = false
+            exportCsv(showToast = true)
+            Toast.makeText(requireContext(), "End Survey completed", Toast.LENGTH_SHORT).show()
+        }
+
+        updatePointCount()
+        refreshSignalPanel()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        uiHandler.post(signalTicker)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        uiHandler.removeCallbacks(signalTicker)
     }
 
     private fun ensureDefaultConfigIfMissing() {
@@ -101,120 +122,138 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         )
     }
 
-    private fun addPin(nx: Double, ny: Double) {
-        val config = IndoorSessionManager.config ?: return
-        val drawable = mapImage.drawable ?: return
-
-        if (rawTaps.isNotEmpty()) {
-            val prev = rawTaps.last()
-            val pxDist = hypot(
-                (nx - prev.first) * drawable.intrinsicWidth,
-                (ny - prev.second) * drawable.intrinsicHeight
-            )
-            val meterDist = pxDist * config.scaleMetersPerPixel
-            val count = (meterDist / stepMeters).toInt()
-            for (i in 1 until count) {
-                val t = i.toDouble() / count
-                val ix = prev.first + (nx - prev.first) * t
-                val iy = prev.second + (ny - prev.second) * t
-                addCheckpoint(ix, iy, "interpolated")
-            }
+    private fun recordPoint(nx: Float, ny: Float) {
+        val snapshot = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> getWifiSnapshot()
+            IndoorSessionManager.RadioMode.CELLULAR -> getCellularSnapshot()
         }
+        val floor = IndoorSessionManager.config?.floorName ?: "Floor-1"
+        val pointNo = IndoorSessionManager.points.size + 1
+        val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
 
-        rawTaps.add(Pair(nx, ny))
-        addCheckpoint(nx, ny, "manual_pin")
-        refreshUi()
-    }
-
-    private fun addCheckpoint(nx: Double, ny: Double, source: String) {
-        val config = IndoorSessionManager.config ?: return
-        val drawable = mapImage.drawable ?: return
-
-        val local = IndoorCoordinateTransformer.normalizedToLocalMeters(
-            normalizedX = nx,
-            normalizedY = ny,
-            imageWidth = drawable.intrinsicWidth,
-            imageHeight = drawable.intrinsicHeight,
-            originNx = config.originNx,
-            originNy = config.originNy,
-            axisAngleRad = config.axisAngleRad,
-            scaleMetersPerPixel = config.scaleMetersPerPixel
-        )
-
-        val idx = IndoorSessionManager.checkpoints.size + 1
-        val ts = SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
-
-        IndoorSessionManager.checkpoints.add(
-            IndoorCheckpoint(
-                index = idx,
+        IndoorSessionManager.points.add(
+            IndoorTestPoint(
                 timestamp = ts,
-                normalizedX = nx,
-                normalizedY = ny,
-                localX = local.first,
-                localY = local.second,
-                source = source
+                floorLabel = floor,
+                pointNo = pointNo,
+                mapX = nx,
+                mapY = ny,
+                networkType = snapshot.networkType,
+                cellIdBssid = snapshot.cellIdBssid,
+                rsrpRssi = snapshot.rsrpRssi,
+                rsrqSinr = snapshot.rsrqSinr
             )
         )
+    }
 
-        val all = IndoorSessionManager.checkpoints.map {
-            Pair(
-                (it.normalizedX * drawable.intrinsicWidth).toFloat(),
-                (it.normalizedY * drawable.intrinsicHeight).toFloat()
+    private data class SignalSnapshot(
+        val networkType: String,
+        val cellIdBssid: String,
+        val rsrpRssi: Int,
+        val rsrqSinr: Int
+    )
+
+    private fun getWifiSnapshot(): SignalSnapshot {
+        return try {
+            val wm = requireContext().applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
+            val info = wm.connectionInfo
+            SignalSnapshot(
+                networkType = "WIFI",
+                cellIdBssid = info?.bssid ?: "-",
+                rsrpRssi = info?.rssi ?: -999,
+                rsrqSinr = 0
             )
+        } catch (_: Exception) {
+            SignalSnapshot("WIFI", "-", -999, 0)
         }
-        overlay.setTapPoints(all)
     }
 
-    private fun undoPin() {
-        if (!surveyActive) return
-        if (IndoorSessionManager.checkpoints.isNotEmpty()) {
-            IndoorSessionManager.checkpoints.removeLast()
+    private fun getCellularSnapshot(): SignalSnapshot {
+        return try {
+            val tm = requireContext().getSystemService(android.content.Context.TELEPHONY_SERVICE) as TelephonyManager
+            val cellInfos = tm.allCellInfo.orEmpty()
+            val lte = cellInfos.filterIsInstance<CellInfoLte>().firstOrNull()
+            if (lte != null) {
+                return SignalSnapshot(
+                    networkType = "LTE",
+                    cellIdBssid = "PCI:${lte.cellIdentity.pci},CI:${lte.cellIdentity.ci}",
+                    rsrpRssi = lte.cellSignalStrength.rsrp,
+                    rsrqSinr = lte.cellSignalStrength.rsrq
+                )
+            }
+            val nr = cellInfos.filterIsInstance<CellInfoNr>().firstOrNull()
+            if (nr != null) {
+                SignalSnapshot(
+                    networkType = "NR",
+                    cellIdBssid = "PCI:${nr.cellIdentity.pci},NCI:${nr.cellIdentity.nci}",
+                    rsrpRssi = nr.cellSignalStrength.ssRsrp,
+                    rsrqSinr = nr.cellSignalStrength.ssRsrq
+                )
+            } else {
+                SignalSnapshot("CELL", "-", -999, -999)
+            }
+        } catch (_: Exception) {
+            SignalSnapshot("CELL", "-", -999, -999)
         }
-        if (rawTaps.isNotEmpty()) rawTaps.removeLast()
-        refreshUi()
     }
 
-    private fun saveCheckpoint() {
-        if (!surveyActive) {
-            Toast.makeText(requireContext(), "กด START ก่อน", Toast.LENGTH_SHORT).show()
-            return
+    private fun refreshSignalPanel() {
+        val snapshot = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> getWifiSnapshot()
+            IndoorSessionManager.RadioMode.CELLULAR -> getCellularSnapshot()
         }
-
-        val pending = pendingTap
-        if (pending == null) {
-            Toast.makeText(requireContext(), "แตะตำแหน่งบนแผนที่ก่อน", Toast.LENGTH_SHORT).show()
-            return
+        textSignalMain.text = when (snapshot.networkType) {
+            "WIFI" -> "RSSI ${snapshot.rsrpRssi} dBm"
+            else -> "RSRP ${snapshot.rsrpRssi} dBm"
         }
-        addPin(pending.first, pending.second)
-        pendingTap = null
-        Toast.makeText(requireContext(), "Checkpoint saved (${IndoorSessionManager.checkpoints.size})", Toast.LENGTH_SHORT).show()
+        textSignalSub.text = "${snapshot.networkType} • ${snapshot.cellIdBssid} • RSRQ/SINR ${snapshot.rsrqSinr}"
     }
 
-    private fun exportCsv() {
+    private fun updatePointCount() {
+        textPointCount.text = "Points: ${IndoorSessionManager.points.size}"
+    }
+
+    private fun exportCsv(showToast: Boolean) {
         val config = IndoorSessionManager.config ?: return
         val rows = mutableListOf<List<String>>()
-        rows.add(listOf("project", "floor", "radio_mode", "index", "timestamp", "norm_x", "norm_y", "local_x_m", "local_y_m", "source"))
-
-        IndoorSessionManager.checkpoints.forEach {
+        rows.add(
+            listOf(
+                "timestamp",
+                "floor_label",
+                "point_no",
+                "map_x",
+                "map_y",
+                "network_type",
+                "cellid_bssid",
+                "rsrp_rssi",
+                "rsrq_sinr"
+            )
+        )
+        IndoorSessionManager.points.forEach {
             rows.add(
                 listOf(
-                    config.projectName,
-                    config.floorName,
-                    IndoorSessionManager.radioMode.name,
-                    it.index.toString(),
                     it.timestamp,
-                    "%.6f".format(it.normalizedX),
-                    "%.6f".format(it.normalizedY),
-                    "%.3f".format(it.localX),
-                    "%.3f".format(it.localY),
-                    it.source
+                    it.floorLabel,
+                    it.pointNo.toString(),
+                    "%.6f".format(it.mapX),
+                    "%.6f".format(it.mapY),
+                    it.networkType,
+                    it.cellIdBssid,
+                    it.rsrpRssi.toString(),
+                    it.rsrqSinr.toString()
                 )
             )
         }
 
-        val fileName = "${config.projectName}_${config.floorName}_${IndoorSessionManager.radioMode.name}_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}_indoor_walk.csv"
+        val fileName = "${config.projectName}_${config.floorName}_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}_indoor_walk.csv"
         val ok = saveCsvToIndoor(fileName, rows)
-        if (ok) Toast.makeText(requireContext(), "Exported to Download/DriveTest/Indoor", Toast.LENGTH_LONG).show()
+        if (showToast) {
+            Toast.makeText(
+                requireContext(),
+                if (ok) "Exported: Download/DriveTest/Indoor/$fileName" else "Export failed",
+                Toast.LENGTH_LONG
+            ).show()
+        }
     }
 
     private fun saveCsvToIndoor(fileName: String, rows: List<List<String>>): Boolean {
@@ -236,7 +275,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 resolver.update(uri, values, null, null)
                 true
             } else {
-                val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "DriveTest/Indoor")
+                val dir = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "DriveTest/Indoor"
+                )
                 if (!dir.exists()) dir.mkdirs()
                 File(dir, fileName).writeText(csv)
                 true
@@ -244,16 +286,5 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         } catch (_: Exception) {
             false
         }
-    }
-
-    private fun refreshSignalLabel() {
-        val mode = if (IndoorSessionManager.radioMode == IndoorSessionManager.RadioMode.WIFI) "WiFi" else "Cellular"
-        textRealtime.text = "Indoor Walk Test • Signal Mode: $mode"
-    }
-
-    private fun refreshUi() {
-        val total = IndoorSessionManager.checkpoints.size
-        val state = if (surveyActive) "RUNNING" else "IDLE"
-        textStats.text = "Survey: $state | Pins/Checkpoints: $total"
     }
 }
