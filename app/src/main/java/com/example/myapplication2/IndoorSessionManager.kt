@@ -23,7 +23,10 @@ data class IndoorCheckpoint(
 )
 
 object IndoorSessionManager {
+    enum class RadioMode { CELLULAR, WIFI }
+
     var config: IndoorConfig? = null
+    var radioMode: RadioMode = RadioMode.CELLULAR
     val checkpoints: MutableList<IndoorCheckpoint> = mutableListOf()
 
     fun clearWalk() {

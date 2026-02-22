@@ -577,13 +577,25 @@ class MainActivity : AppCompatActivity() {
                 if (currentDriveMode == DriveMode.OUTDOOR) DriveMode.INDOOR else DriveMode.OUTDOOR
 
             updateDriveModeButtonUi()
-            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            val fragmentLabel = when (currentFragment) {
-                is WifiFragment -> "WiFi"
-                is IndoorSetupFragment, is IndoorWalkFragment -> "Indoor Walk Test"
-                else -> "Cellular"
+            if (currentDriveMode == DriveMode.INDOOR) {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, IndoorWalkFragment())
+                    .commit()
+                findViewById<Button>(R.id.saveCsvButton).apply {
+                    isEnabled = true
+                    text = "START"
+                }
+                updateCurrentModeLabel("${IndoorSessionManager.radioMode.name} (Indoor Walk Test)")
+            } else {
+                supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, CellularFragment())
+                    .commit()
+                findViewById<Button>(R.id.saveCsvButton).apply {
+                    isEnabled = true
+                    text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                }
+                updateCurrentModeLabel("Cellular")
             }
-            updateCurrentModeLabel(fragmentLabel)
             toast("Drive mode: ${currentDriveMode.label}")
         }
         btnSelectFloor.setOnClickListener {
@@ -614,7 +626,6 @@ class MainActivity : AppCompatActivity() {
             // 🔒 ถ้ากำลัง Recording → disable menu
             popup.menu.findItem(R.id.menu_cellular).isEnabled = !isRecordingNow
             popup.menu.findItem(R.id.menu_wifi).isEnabled = !isRecordingNow
-            popup.menu.findItem(R.id.menu_indoor).isEnabled = !isRecordingNow
 
             popup.setOnMenuItemClickListener { item ->
 
@@ -626,15 +637,23 @@ class MainActivity : AppCompatActivity() {
 
                 when (item.itemId) {
                     R.id.menu_cellular -> {
-                        supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, CellularFragment())
-                            .commit()
-                        findViewById<Button>(R.id.saveCsvButton).apply {
-                            isEnabled = true
-                            text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                        if (currentDriveMode == DriveMode.INDOOR) {
+                            IndoorSessionManager.radioMode = IndoorSessionManager.RadioMode.CELLULAR
+                            (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
+                                ?.setRadioMode(IndoorSessionManager.RadioMode.CELLULAR)
+                            updateCurrentModeLabel("Cellular (Indoor Walk Test)")
+                            true
+                        } else {
+                            supportFragmentManager.beginTransaction()
+                                .replace(R.id.fragment_container, CellularFragment())
+                                .commit()
+                            findViewById<Button>(R.id.saveCsvButton).apply {
+                                isEnabled = true
+                                text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                            }
+                            updateCurrentModeLabel("Cellular")
+                            true
                         }
-                        updateCurrentModeLabel("Cellular")
-                        true
                     }
 
                     R.id.menu_wifi -> {
@@ -645,28 +664,24 @@ class MainActivity : AppCompatActivity() {
                             return@setOnMenuItemClickListener true
                         }
 
-                        supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, WifiFragment())
-                            .commit()
+                        if (currentDriveMode == DriveMode.INDOOR) {
+                            IndoorSessionManager.radioMode = IndoorSessionManager.RadioMode.WIFI
+                            (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
+                                ?.setRadioMode(IndoorSessionManager.RadioMode.WIFI)
+                            updateCurrentModeLabel("WiFi (Indoor Walk Test)")
+                            true
+                        } else {
+                            supportFragmentManager.beginTransaction()
+                                .replace(R.id.fragment_container, WifiFragment())
+                                .commit()
 
-                        findViewById<Button>(R.id.saveCsvButton).apply {
-                            isEnabled = true
-                            text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                            findViewById<Button>(R.id.saveCsvButton).apply {
+                                isEnabled = true
+                                text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                            }
+                            updateCurrentModeLabel("WiFi")
+                            true
                         }
-                        updateCurrentModeLabel("WiFi")
-                        true
-                    }
-
-                    R.id.menu_indoor -> {
-                        supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, IndoorSetupFragment())
-                            .commit()
-                        findViewById<Button>(R.id.saveCsvButton).apply {
-                            isEnabled = false
-                            text = "TAP MODE"
-                        }
-                        updateCurrentModeLabel("Indoor Walk Test")
-                        true
                     }
 
                     else -> false
@@ -724,8 +739,15 @@ class MainActivity : AppCompatActivity() {
 
 
 
-                is IndoorSetupFragment, is IndoorWalkFragment -> {
-                    toast("Indoor Walk Test ใช้ปุ่มในหน้า Setup/Walk แทน START/STOP")
+                is IndoorWalkFragment -> {
+                    val indoor = fragment as IndoorWalkFragment
+                    if (!indoor.isSurveyActive()) {
+                        indoor.startSurvey()
+                        scanBtn.text = "STOP"
+                    } else {
+                        indoor.stopSurveyAndExport()
+                        scanBtn.text = "START"
+                    }
                 }
 
                 // ================= WIFI =================

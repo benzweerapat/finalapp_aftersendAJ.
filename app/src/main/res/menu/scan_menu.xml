@@ -9,9 +9,4 @@
         android:id="@+id/menu_wifi"
         android:title="WiFi Scan"
         />
-
-    <item
-        android:id="@+id/menu_indoor"
-        android:title="Indoor Walk Test"
-        />
 </menu>
