@@ -555,6 +555,8 @@ class MainActivity : AppCompatActivity() {
             "Current: $fragmentLabel • ${currentDriveMode.label}"
     }
 
+    fun isIndoorDriveMode(): Boolean = currentDriveMode == DriveMode.INDOOR
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 

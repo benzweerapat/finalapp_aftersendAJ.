@@ -20,6 +20,7 @@ import android.widget.Toast
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
@@ -64,6 +65,8 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private var wifiSnr: TextView? = null
     private var wifiSpeed: TextView? = null
     private var latLngValue: TextView? = null
+    private var indoorPlotView: IndoorPlotImageView? = null
+    private var btnImportFloorPlan: View? = null
 
     // Altitude
     private var textFloor: TextView? = null
@@ -89,6 +92,13 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private var iconWifi: ImageView? = null
     private var wifiBlinkAnimator: ObjectAnimator? = null
     private var currentSsid: String = "Unknown"
+
+    private val pickFloorPlanLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null) {
+            IndoorSessionManager.importedFloorPlanUri = uri
+            indoorPlotView?.setImageFromUri(uri)
+        }
+    }
 
     private fun startWifiBlink() {
         if (wifiBlinkAnimator != null) return
@@ -241,6 +251,9 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         wifiSnr = view.findViewById(R.id.wifiSnr)
         wifiSpeed = view.findViewById(R.id.wifiSpeed)
         latLngValue = view.findViewById(R.id.latLngValue)
+        indoorPlotView = view.findViewById(R.id.indoorPlotView)
+        btnImportFloorPlan = view.findViewById(R.id.btnImportFloorPlan)
+        setupIndoorPlotUi()
         iconGps = view.findViewById(R.id.iconGps)
         iconWifi = view.findViewById(R.id.iconWifi)
 
@@ -369,8 +382,34 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         (btnEditFloorHeight as? TextView)?.text = label
     }
 
+
+    private fun setupIndoorPlotUi() {
+        indoorPlotView?.setImageFromUri(IndoorSessionManager.importedFloorPlanUri)
+        indoorPlotView?.setPointsNormalized(IndoorSessionManager.plottedPointsNormalized)
+        indoorPlotView?.onPointAdded = { nx, ny ->
+            if (mainActivity.isIndoorDriveMode()) {
+                IndoorSessionManager.addPlotPoint(nx, ny)
+            }
+        }
+        btnImportFloorPlan?.setOnClickListener {
+            if (!mainActivity.isIndoorDriveMode()) {
+                mainActivity.toast("Import floor plan ใช้ใน Indoor mode")
+                return@setOnClickListener
+            }
+            pickFloorPlanLauncher.launch("image/*")
+        }
+        updateIndoorPlotUiState()
+    }
+
+    private fun updateIndoorPlotUiState() {
+        val indoor = mainActivity.isIndoorDriveMode()
+        indoorPlotView?.setPlotEnabled(indoor)
+        btnImportFloorPlan?.visibility = if (indoor) View.VISIBLE else View.GONE
+    }
+
     override fun onResume() {
         super.onResume()
+        updateIndoorPlotUiState()
 
         if (hasWifiPermission()) {
             requireContext().registerReceiver(

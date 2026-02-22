@@ -162,6 +162,7 @@
         </androidx.cardview.widget.CardView>
 
         <androidx.cardview.widget.CardView
+            android:id="@+id/indoorPlotCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
@@ -173,26 +174,47 @@
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="top"
-                android:padding="16dp">
+                android:orientation="vertical"
+                android:padding="12dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Location"
-                    android:textColor="#80FFFFFF"
-                    android:textSize="11sp"
-                    android:layout_marginEnd="8dp" />
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Indoor Plot"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="11sp" />
+
+                    <Button
+                        android:id="@+id/btnImportFloorPlan"
+                        android:layout_width="wrap_content"
+                        android:layout_height="32dp"
+                        android:text="Import"
+                        android:textAllCaps="false"
+                        android:textSize="11sp"/>
+                </LinearLayout>
+
+                <com.example.myapplication2.IndoorPlotImageView
+                    android:id="@+id/indoorPlotView"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:layout_marginTop="8dp"
+                    android:background="#0B1220" />
 
                 <TextView
                     android:id="@+id/latLngValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
                     android:text="— / —"
                     android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold"/>
+                    android:textSize="12sp"/>
             </LinearLayout>
         </androidx.cardview.widget.CardView>
 
