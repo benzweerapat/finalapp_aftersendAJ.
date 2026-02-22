@@ -65,11 +65,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         mapView.onPointAdded = { nx, ny ->
             if (!surveyActive) {
                 Toast.makeText(requireContext(), "Survey ended", Toast.LENGTH_SHORT).show()
-                return@onPointAdded
+            } else {
+                recordPoint(nx.toFloat(), ny.toFloat())
+                mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
+                updatePointCount()
             }
-            recordPoint(nx.toFloat(), ny.toFloat())
-            mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
-            updatePointCount()
         }
 
         view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
@@ -183,17 +183,39 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             }
             val nr = cellInfos.filterIsInstance<CellInfoNr>().firstOrNull()
             if (nr != null) {
+                val pci = invokeIntGetter(nr.cellIdentity, "getPci")
+                val nci = invokeLongGetter(nr.cellIdentity, "getNci")
+                val ssRsrp = invokeIntGetter(nr.cellSignalStrength, "getSsRsrp")
+                val ssRsrq = invokeIntGetter(nr.cellSignalStrength, "getSsRsrq")
                 SignalSnapshot(
                     networkType = "NR",
-                    cellIdBssid = "PCI:${nr.cellIdentity.pci},NCI:${nr.cellIdentity.nci}",
-                    rsrpRssi = nr.cellSignalStrength.ssRsrp,
-                    rsrqSinr = nr.cellSignalStrength.ssRsrq
+                    cellIdBssid = "PCI:${pci ?: -1},NCI:${nci ?: -1}",
+                    rsrpRssi = ssRsrp ?: -999,
+                    rsrqSinr = ssRsrq ?: -999
                 )
             } else {
                 SignalSnapshot("CELL", "-", -999, -999)
             }
         } catch (_: Exception) {
             SignalSnapshot("CELL", "-", -999, -999)
+        }
+    }
+
+    private fun invokeIntGetter(target: Any?, methodName: String): Int? {
+        if (target == null) return null
+        return try {
+            (target.javaClass.getMethod(methodName).invoke(target) as? Number)?.toInt()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun invokeLongGetter(target: Any?, methodName: String): Long? {
+        if (target == null) return null
+        return try {
+            (target.javaClass.getMethod(methodName).invoke(target) as? Number)?.toLong()
+        } catch (_: Exception) {
+            null
         }
     }
 
