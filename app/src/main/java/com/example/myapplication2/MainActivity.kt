@@ -580,7 +580,7 @@ class MainActivity : AppCompatActivity() {
             val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
             val fragmentLabel = when (currentFragment) {
                 is WifiFragment -> "WiFi"
-                is IndoorPositioningFragment -> "Indoor Positioning"
+                is IndoorSetupFragment, is IndoorWalkFragment -> "Indoor Walk Test"
                 else -> "Cellular"
             }
             updateCurrentModeLabel(fragmentLabel)
@@ -659,13 +659,13 @@ class MainActivity : AppCompatActivity() {
 
                     R.id.menu_indoor -> {
                         supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, IndoorPositioningFragment())
+                            .replace(R.id.fragment_container, IndoorSetupFragment())
                             .commit()
                         findViewById<Button>(R.id.saveCsvButton).apply {
                             isEnabled = false
                             text = "TAP MODE"
                         }
-                        updateCurrentModeLabel("Indoor Positioning")
+                        updateCurrentModeLabel("Indoor Walk Test")
                         true
                     }
 
@@ -724,8 +724,8 @@ class MainActivity : AppCompatActivity() {
 
 
 
-                is IndoorPositioningFragment -> {
-                    toast("Indoor positioning ใช้การแตะบนภาพแปลน ไม่ต้องกด START/STOP")
+                is IndoorSetupFragment, is IndoorWalkFragment -> {
+                    toast("Indoor Walk Test ใช้ปุ่มในหน้า Setup/Walk แทน START/STOP")
                 }
 
                 // ================= WIFI =================

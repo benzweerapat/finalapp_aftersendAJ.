@@ -12,6 +12,6 @@
 
     <item
         android:id="@+id/menu_indoor"
-        android:title="Indoor Positioning"
+        android:title="Indoor Walk Test"
         />
 </menu>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <EditText
+            android:id="@+id/inputProjectName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Project Name"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#AAAAAA" />
+
+        <EditText
+            android:id="@+id/inputFloorName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Floor"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#AAAAAA"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/btnPickFloorImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Pick Floor Plan (.jpg/.png)"
+            android:layout_marginTop="12dp" />
+
+        <ImageView
+            android:id="@+id/setupFloorImage"
+            android:layout_width="match_parent"
+            android:layout_height="320dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/floor_plan_placeholder"
+            android:layout_marginTop="10dp"/>
+
+        <Button
+            android:id="@+id/btnStartCalibrationLine"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Calibrate Scale (2-point line)"
+            android:layout_marginTop="10dp" />
+
+        <TextView
+            android:id="@+id/textCalibrationSummary"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#86EFAC"
+            android:layout_marginTop="8dp" />
+
+        <Button
+            android:id="@+id/btnGoSurvey"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Start Indoor Walk Survey"
+            android:layout_marginTop="16dp" />
+
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#121212"
+    android:padding="12dp">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <ImageView
+            android:id="@+id/walkFloorImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:src="@drawable/floor_plan_placeholder" />
+
+        <com.example.myapplication2.FloorPlanOverlayView
+            android:id="@+id/walkOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/textRealtimeSignal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#E2E8F0"
+        android:text="Signal: -"
+        android:layout_marginTop="8dp" />
+
+    <TextView
+        android:id="@+id/textWalkStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#93C5FD"
+        android:text="Pins/Checkpoints: 0"
+        android:layout_marginTop="4dp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="10dp">
+
+        <Button
+            android:id="@+id/btnCheckpoint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Add Pin/Checkpoint" />
+
+        <Button
+            android:id="@+id/btnUndoPin"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Undo Pin" />
+
+        <Button
+            android:id="@+id/btnStopAndExport"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Stop & Export" />
+    </LinearLayout>
+
+</LinearLayout>
