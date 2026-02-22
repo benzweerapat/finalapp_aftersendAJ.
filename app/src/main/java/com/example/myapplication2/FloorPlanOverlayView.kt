@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 
 class FloorPlanOverlayView @JvmOverloads constructor(
@@ -40,7 +41,7 @@ class FloorPlanOverlayView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val imageView = (parent as? android.view.ViewGroup)?.findViewById<ImageView>(R.id.floorPlanImage) ?: return
+        val imageView = resolveSiblingImageView() ?: return
 
         calibrationPoints.forEach { point ->
             val mapped = mapBitmapToView(imageView, point.first, point.second)
@@ -51,6 +52,15 @@ class FloorPlanOverlayView @JvmOverloads constructor(
             val mapped = mapBitmapToView(imageView, point.first, point.second)
             canvas.drawCircle(mapped.first, mapped.second, 7f, tapPaint)
         }
+    }
+
+    private fun resolveSiblingImageView(): ImageView? {
+        val viewGroup = parent as? ViewGroup ?: return null
+        for (i in 0 until viewGroup.childCount) {
+            val child = viewGroup.getChildAt(i)
+            if (child is ImageView) return child
+        }
+        return null
     }
 
     private fun mapBitmapToView(imageView: ImageView, x: Float, y: Float): Pair<Float, Float> {
