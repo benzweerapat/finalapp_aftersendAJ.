@@ -38,75 +38,13 @@
             android:text="Undo"
             android:textAllCaps="false"
             android:textSize="11sp" />
-
-        <Button
-            android:id="@+id/btnExportCsv"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:layout_marginStart="6dp"
-            android:text="Export CSV"
-            android:textAllCaps="false"
-            android:textSize="11sp" />
     </LinearLayout>
 
-    <androidx.cardview.widget.CardView
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/indoorSignalPanelContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:layout_margin="10dp"
-        app:cardBackgroundColor="#CC1E1E1E"
-        app:cardCornerRadius="12dp"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="12dp">
-
-            <TextView
-                android:id="@+id/textSignalMain"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="RSRP -- dBm"
-                android:textColor="#FDE68A"
-                android:textStyle="bold"
-                android:textSize="18sp" />
-
-            <TextView
-                android:id="@+id/textSignalSub"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="LTE • PCI:- • RSRQ/SINR --"
-                android:textColor="#E5E7EB"
-                android:textSize="12sp"
-                android:layout_marginTop="4dp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="8dp">
-
-                <TextView
-                    android:id="@+id/textPointCount"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="Points: 0"
-                    android:textColor="#93C5FD"
-                    android:textSize="12sp"/>
-
-                <Button
-                    android:id="@+id/btnEndSurvey"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:text="End Survey"
-                    android:textAllCaps="false"
-                    android:textSize="12sp" />
-            </LinearLayout>
-        </LinearLayout>
-    </androidx.cardview.widget.CardView>
+        android:layout_margin="10dp" />
 
 </FrameLayout>

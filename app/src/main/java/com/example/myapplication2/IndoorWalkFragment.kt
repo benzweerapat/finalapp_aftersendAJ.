@@ -14,7 +14,6 @@ import android.telephony.CellInfoNr
 import android.telephony.TelephonyManager
 import android.view.View
 import android.widget.Button
-import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
@@ -23,13 +22,9 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
+class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignalPanelFragment.Listener {
 
     private lateinit var mapView: IndoorPlotImageView
-    private lateinit var textSignalMain: TextView
-    private lateinit var textSignalSub: TextView
-    private lateinit var textPointCount: TextView
-
     private val uiHandler = Handler(Looper.getMainLooper())
     private var surveyActive = true
 
@@ -49,7 +44,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
     }
 
-
     fun setRadioMode(mode: IndoorSessionManager.RadioMode) {
         IndoorSessionManager.radioMode = mode
         if (isAdded) refreshSignalPanel()
@@ -59,11 +53,14 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         super.onViewCreated(view, savedInstanceState)
 
         mapView = view.findViewById(R.id.indoorMapView)
-        textSignalMain = view.findViewById(R.id.textSignalMain)
-        textSignalSub = view.findViewById(R.id.textSignalSub)
-        textPointCount = view.findViewById(R.id.textPointCount)
-
         ensureDefaultConfigIfMissing()
+
+        if (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) == null) {
+            childFragmentManager.beginTransaction()
+                .replace(R.id.indoorSignalPanelContainer, IndoorSignalPanelFragment())
+                .commitNow()
+        }
+
         mapView.setImageFromUri(IndoorSessionManager.importedFloorPlanUri ?: IndoorSessionManager.config?.imageUri)
         mapView.setPlotEnabled(true)
         mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
@@ -96,16 +93,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             }
         }
 
-        view.findViewById<Button>(R.id.btnExportCsv).setOnClickListener {
-            exportCsv(showToast = true)
-        }
-
-        view.findViewById<Button>(R.id.btnEndSurvey).setOnClickListener {
-            surveyActive = false
-            exportCsv(showToast = true)
-            Toast.makeText(requireContext(), "End Survey completed", Toast.LENGTH_SHORT).show()
-        }
-
         updatePointCount()
         refreshSignalPanel()
     }
@@ -118,6 +105,20 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     override fun onPause() {
         super.onPause()
         uiHandler.removeCallbacks(signalTicker)
+    }
+
+    override fun onEndSurveyClicked() {
+        if (!surveyActive) return
+        surveyActive = false
+        exportCsv(showToast = true)
+
+        // clear all points as requested
+        IndoorSessionManager.points.clear()
+        IndoorSessionManager.plottedPointsNormalized.clear()
+        mapView.setPointsNormalized(emptyList())
+        updatePointCount()
+
+        Toast.makeText(requireContext(), "End Survey completed", Toast.LENGTH_SHORT).show()
     }
 
     private fun ensureDefaultConfigIfMissing() {
@@ -236,74 +237,79 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             IndoorSessionManager.RadioMode.WIFI -> getWifiSnapshot()
             IndoorSessionManager.RadioMode.CELLULAR -> getCellularSnapshot()
         }
-        textSignalMain.text = when (snapshot.networkType) {
+        val main = when (snapshot.networkType) {
             "WIFI" -> "RSSI ${snapshot.rsrpRssi} dBm"
             else -> "RSRP ${snapshot.rsrpRssi} dBm"
         }
-        textSignalSub.text = "${snapshot.networkType} • ${snapshot.cellIdBssid} • RSRQ/SINR ${snapshot.rsrqSinr}"
+        val sub = "${snapshot.networkType} • ${snapshot.cellIdBssid} • RSRQ/SINR ${snapshot.rsrqSinr}"
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.updateSignal(main, sub)
     }
 
     private fun updatePointCount() {
-        textPointCount.text = "Points: ${IndoorSessionManager.points.size}"
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.updatePointCount(IndoorSessionManager.points.size)
     }
+
+    private val indoorCsvHeader = listOf(
+        "timestamp", "floor_label", "point_no", "map_x", "map_y",
+        "network_type", "cellid_bssid", "rsrp_rssi", "rsrq_sinr"
+    )
 
     private fun exportCsv(showToast: Boolean) {
         val config = IndoorSessionManager.config ?: return
-        val rows = mutableListOf<List<String>>()
-        rows.add(
+        if (IndoorSessionManager.points.isEmpty()) {
+            if (showToast) Toast.makeText(requireContext(), "No data to export", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // outdoor-like naming/session strategy
+        val mainActivity = activity as? MainActivity
+        val sessionId = mainActivity?.getNextSessionIdMaxPlusOne("Indoor") ?: 1
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val fileName = "Session_${sessionId}_INDOOR_SURV_${IndoorSessionManager.radioMode.name}_$timestamp.csv"
+
+        val rows = IndoorSessionManager.points.map {
             listOf(
-                "timestamp",
-                "floor_label",
-                "point_no",
-                "map_x",
-                "map_y",
-                "network_type",
-                "cellid_bssid",
-                "rsrp_rssi",
-                "rsrq_sinr"
-            )
-        )
-        IndoorSessionManager.points.forEach {
-            rows.add(
-                listOf(
-                    it.timestamp,
-                    it.floorLabel,
-                    it.pointNo.toString(),
-                    "%.6f".format(it.mapX),
-                    "%.6f".format(it.mapY),
-                    it.networkType,
-                    it.cellIdBssid,
-                    it.rsrpRssi.toString(),
-                    it.rsrqSinr.toString()
-                )
+                it.timestamp,
+                it.floorLabel,
+                it.pointNo.toString(),
+                "%.6f".format(it.mapX),
+                "%.6f".format(it.mapY),
+                it.networkType,
+                it.cellIdBssid,
+                it.rsrpRssi.toString(),
+                it.rsrqSinr.toString()
             )
         }
 
-        val fileName = "${config.projectName}_${config.floorName}_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}_indoor_walk.csv"
-        val ok = saveCsvToIndoor(fileName, rows)
+        val ok = saveCsvToIndoor(fileName, indoorCsvHeader, rows)
         if (showToast) {
             Toast.makeText(
                 requireContext(),
-                if (ok) "Exported: Download/DriveTest/Indoor/$fileName" else "Export failed",
+                if (ok) "Saved: Download/DriveTest/Indoor/Indoor/$fileName" else "Export failed",
                 Toast.LENGTH_LONG
             ).show()
         }
     }
 
-    private fun saveCsvToIndoor(fileName: String, rows: List<List<String>>): Boolean {
-        val csv = rows.joinToString("\n") { it.joinToString(",") }
-
+    private fun saveCsvToIndoor(fileName: String, header: List<String>, rows: List<List<String>>): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/Indoor")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/Indoor/Indoor")
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val resolver = requireContext().contentResolver
                 val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
-                resolver.openOutputStream(uri)?.use { it.write(csv.toByteArray()) }
+                resolver.openOutputStream(uri)?.bufferedWriter()?.use { w ->
+                    w.append(header.joinToString(";")).append("\n")
+                    rows.forEach { row ->
+                        w.append(row.joinToString(";")).append("\n")
+                    }
+                }
                 values.clear()
                 values.put(MediaStore.Downloads.IS_PENDING, 0)
                 resolver.update(uri, values, null, null)
@@ -311,10 +317,16 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             } else {
                 val dir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "DriveTest/Indoor"
+                    "DriveTest/Indoor/Indoor"
                 )
                 if (!dir.exists()) dir.mkdirs()
-                File(dir, fileName).writeText(csv)
+                val file = File(dir, fileName)
+                file.bufferedWriter().use { w ->
+                    w.append(header.joinToString(";")).append("\n")
+                    rows.forEach { row ->
+                        w.append(row.joinToString(";")).append("\n")
+                    }
+                }
                 true
             }
         } catch (_: Exception) {
