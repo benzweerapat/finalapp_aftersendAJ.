@@ -43,6 +43,11 @@ import android.telephony.CellInfoNr
 
 class MainActivity : AppCompatActivity() {
 
+    enum class DriveMode(val label: String, val folderName: String) {
+        OUTDOOR("Outdoor", "Outdoor"),
+        INDOOR("Indoor", "Indoor")
+    }
+
     // ================== GLOBAL ==================
     var latestLocation: Location? = null
     var currentFilteredPressure: Float = 0f
@@ -67,6 +72,7 @@ class MainActivity : AppCompatActivity() {
     // ================== CELLULAR CSV ==================
     var isRecordingCsv = false
     var isGroundSet = false
+    private var currentDriveMode = DriveMode.OUTDOOR
 
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
@@ -531,14 +537,51 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
+
+    private fun updateDriveModeButtonUi() {
+        val btn = findViewById<Button>(R.id.btnDriveMode) ?: return
+        btn.text = currentDriveMode.label
+
+        val colorRes =
+            if (currentDriveMode == DriveMode.OUTDOOR) android.R.color.holo_green_light
+            else android.R.color.holo_orange_light
+        val color = ContextCompat.getColor(this, colorRes)
+
+        btn.setTextColor(color)
+    }
+
+    private fun updateCurrentModeLabel(fragmentLabel: String) {
+        findViewById<TextView>(R.id.currentModeText).text =
+            "Current: $fragmentLabel • ${currentDriveMode.label}"
+    }
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
+        val btnDriveMode = findViewById<Button>(R.id.btnDriveMode)
         val btnSelectFloor =
             findViewById<Button>(R.id.btnSelectFloor)
         updateFloorButtonLabel()
         refreshFloorHeightButtonLabel()
+        updateDriveModeButtonUi()
+        updateCurrentModeLabel("Cellular")
+
+        btnDriveMode.setOnClickListener {
+            if (isRecordingCsv || isRecordingWifiCsv) {
+                toast("Stop recording before changing drive mode")
+                return@setOnClickListener
+            }
+
+            currentDriveMode =
+                if (currentDriveMode == DriveMode.OUTDOOR) DriveMode.INDOOR else DriveMode.OUTDOOR
+
+            updateDriveModeButtonUi()
+            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+            val fragmentLabel = if (currentFragment is WifiFragment) "WiFi" else "Cellular"
+            updateCurrentModeLabel(fragmentLabel)
+            toast("Drive mode: ${currentDriveMode.label}")
+        }
         btnSelectFloor.setOnClickListener {
             if (isRecordingCsv || isRecordingWifiCsv) {
                 toast("Stop recording before changing floor")
@@ -553,7 +596,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.btnMenu).setOnClickListener { view ->
 
             if (isRecordingCsv || isRecordingWifiCsv) {
-                toast("Stop recording before switching mode")
+                toast("Stop recording before changing mode")
                 return@setOnClickListener
             }
 
@@ -572,7 +615,7 @@ class MainActivity : AppCompatActivity() {
 
                 // 🔴 Safety check (กันพลาด)
                 if (isRecordingNow) {
-                    toast("Stop recording before switching mode")
+                    toast("Stop recording before changing mode")
                     return@setOnMenuItemClickListener true
                 }
 
@@ -581,7 +624,7 @@ class MainActivity : AppCompatActivity() {
                         supportFragmentManager.beginTransaction()
                             .replace(R.id.fragment_container, CellularFragment())
                             .commit()
-                        findViewById<TextView>(R.id.currentModeText).text = "Current: Cellular"
+                        updateCurrentModeLabel("Cellular")
                         true
                     }
 
@@ -597,7 +640,7 @@ class MainActivity : AppCompatActivity() {
                             .replace(R.id.fragment_container, WifiFragment())
                             .commit()
 
-                        findViewById<TextView>(R.id.currentModeText).text = "Current: WiFi"
+                        updateCurrentModeLabel("WiFi")
                         true
                     }
 
@@ -1114,7 +1157,7 @@ class MainActivity : AppCompatActivity() {
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
                     put(
                         MediaStore.MediaColumns.RELATIVE_PATH,
-                        "Download/DriveTest/$subDir"
+                        "Download/DriveTest/${currentDriveMode.folderName}/$subDir"
                     )
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
@@ -1146,7 +1189,7 @@ class MainActivity : AppCompatActivity() {
                     Environment.getExternalStoragePublicDirectory(
                         Environment.DIRECTORY_DOWNLOADS
                     ),
-                    "DriveTest/$subDir"
+                    "DriveTest/${currentDriveMode.folderName}/$subDir"
                 )
                 if (!dir.exists()) dir.mkdirs()
 
@@ -1161,7 +1204,7 @@ class MainActivity : AppCompatActivity() {
 
 
 
-            toast("Saved: Download/DriveTest/$subDir/$fileName")
+            toast("Saved: Download/DriveTest/${currentDriveMode.folderName}/$subDir/$fileName")
 
         } catch (e: Exception) {
             e.printStackTrace()
@@ -1261,7 +1304,7 @@ class MainActivity : AppCompatActivity() {
             Environment.getExternalStoragePublicDirectory(
                 Environment.DIRECTORY_DOWNLOADS
             ),
-            "DriveTest/$subDir"
+            "DriveTest/${currentDriveMode.folderName}/$subDir"
         )
 
         if (!baseDir.exists()) return 1
