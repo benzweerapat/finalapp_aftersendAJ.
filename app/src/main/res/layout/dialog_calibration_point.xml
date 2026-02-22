@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <EditText
+        android:id="@+id/inputMeterX"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Local X (m)" />
+
+    <EditText
+        android:id="@+id/inputMeterY"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Local Y (m)"
+        android:layout_marginTop="8dp"/>
+
+</LinearLayout>

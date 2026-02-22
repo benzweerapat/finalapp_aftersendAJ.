@@ -578,7 +578,11 @@ class MainActivity : AppCompatActivity() {
 
             updateDriveModeButtonUi()
             val currentFragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
-            val fragmentLabel = if (currentFragment is WifiFragment) "WiFi" else "Cellular"
+            val fragmentLabel = when (currentFragment) {
+                is WifiFragment -> "WiFi"
+                is IndoorPositioningFragment -> "Indoor Positioning"
+                else -> "Cellular"
+            }
             updateCurrentModeLabel(fragmentLabel)
             toast("Drive mode: ${currentDriveMode.label}")
         }
@@ -610,6 +614,7 @@ class MainActivity : AppCompatActivity() {
             // 🔒 ถ้ากำลัง Recording → disable menu
             popup.menu.findItem(R.id.menu_cellular).isEnabled = !isRecordingNow
             popup.menu.findItem(R.id.menu_wifi).isEnabled = !isRecordingNow
+            popup.menu.findItem(R.id.menu_indoor).isEnabled = !isRecordingNow
 
             popup.setOnMenuItemClickListener { item ->
 
@@ -624,6 +629,10 @@ class MainActivity : AppCompatActivity() {
                         supportFragmentManager.beginTransaction()
                             .replace(R.id.fragment_container, CellularFragment())
                             .commit()
+                        findViewById<Button>(R.id.saveCsvButton).apply {
+                            isEnabled = true
+                            text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                        }
                         updateCurrentModeLabel("Cellular")
                         true
                     }
@@ -640,10 +649,25 @@ class MainActivity : AppCompatActivity() {
                             .replace(R.id.fragment_container, WifiFragment())
                             .commit()
 
+                        findViewById<Button>(R.id.saveCsvButton).apply {
+                            isEnabled = true
+                            text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+                        }
                         updateCurrentModeLabel("WiFi")
                         true
                     }
 
+                    R.id.menu_indoor -> {
+                        supportFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, IndoorPositioningFragment())
+                            .commit()
+                        findViewById<Button>(R.id.saveCsvButton).apply {
+                            isEnabled = false
+                            text = "TAP MODE"
+                        }
+                        updateCurrentModeLabel("Indoor Positioning")
+                        true
+                    }
 
                     else -> false
                 }
@@ -699,6 +723,10 @@ class MainActivity : AppCompatActivity() {
                 }
 
 
+
+                is IndoorPositioningFragment -> {
+                    toast("Indoor positioning ใช้การแตะบนภาพแปลน ไม่ต้องกด START/STOP")
+                }
 
                 // ================= WIFI =================
                 is WifiFragment -> {
