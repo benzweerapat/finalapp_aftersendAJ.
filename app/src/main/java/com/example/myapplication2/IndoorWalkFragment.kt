@@ -83,10 +83,16 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
 
         view.findViewById<Button>(R.id.btnUndo).setOnClickListener {
-            if (IndoorSessionManager.points.isNotEmpty()) {
-                IndoorSessionManager.points.removeLast()
+            if (IndoorSessionManager.points.isEmpty()) {
+                Toast.makeText(requireContext(), "No point to undo", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            try {
+                IndoorSessionManager.points.removeAt(IndoorSessionManager.points.lastIndex)
                 mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
                 updatePointCount()
+            } catch (e: Exception) {
+                Toast.makeText(requireContext(), "Undo failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
 

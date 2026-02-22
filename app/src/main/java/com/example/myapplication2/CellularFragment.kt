@@ -18,7 +18,6 @@ import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.fragment.app.Fragment
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
@@ -45,8 +44,6 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
     private var freqBwValue: TextView? = null
     private var cellIdBlock: TextView? = null
     private var latLngValue: TextView? = null
-    private var indoorPlotView: IndoorPlotImageView? = null
-    private var btnImportFloorPlan: View? = null
 
     // Icons
     private var iconSim: ImageView? = null
@@ -78,13 +75,6 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
     private var btnReset: View? = null
     private var btnEditFloorHeight: View? = null
     private var textGpsEstimated: TextView? = null
-
-    private val pickFloorPlanLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            IndoorSessionManager.importedFloorPlanUri = uri
-            indoorPlotView?.setImageFromUri(uri)
-        }
-    }
 
     private val scanRunnable = object : Runnable {
         override fun run() {
@@ -149,9 +139,6 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         freqBwValue = view.findViewById(R.id.freqBwValue)
         cellIdBlock = view.findViewById(R.id.cellIdBlock)
         latLngValue = view.findViewById(R.id.latLngValue)
-        indoorPlotView = view.findViewById(R.id.indoorPlotView)
-        btnImportFloorPlan = view.findViewById(R.id.btnImportFloorPlan)
-        setupIndoorPlotUi()
 
         iconSim = view.findViewById(R.id.iconSim)
         iconCall = view.findViewById(R.id.iconCall)
@@ -305,34 +292,8 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         (btnEditFloorHeight as? TextView)?.text = label
     }
 
-
-    private fun setupIndoorPlotUi() {
-        indoorPlotView?.setImageFromUri(IndoorSessionManager.importedFloorPlanUri)
-        indoorPlotView?.setPointsNormalized(IndoorSessionManager.plottedPointsNormalized)
-        indoorPlotView?.onPointAdded = { nx, ny ->
-            if (mainActivity.isIndoorDriveMode()) {
-                IndoorSessionManager.addPlotPoint(nx, ny)
-            }
-        }
-        btnImportFloorPlan?.setOnClickListener {
-            if (!mainActivity.isIndoorDriveMode()) {
-                mainActivity.toast("Import floor plan ใช้ใน Indoor mode")
-                return@setOnClickListener
-            }
-            pickFloorPlanLauncher.launch("image/*")
-        }
-        updateIndoorPlotUiState()
-    }
-
-    private fun updateIndoorPlotUiState() {
-        val indoor = mainActivity.isIndoorDriveMode()
-        indoorPlotView?.setPlotEnabled(indoor)
-        btnImportFloorPlan?.visibility = if (indoor) View.VISIBLE else View.GONE
-    }
-
     override fun onResume() {
         super.onResume()
-        updateIndoorPlotUiState()
         updateStatusIcons(
             requireContext().getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         )
