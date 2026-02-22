@@ -49,6 +49,12 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
     }
 
+
+    fun setRadioMode(mode: IndoorSessionManager.RadioMode) {
+        IndoorSessionManager.radioMode = mode
+        if (isAdded) refreshSignalPanel()
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
