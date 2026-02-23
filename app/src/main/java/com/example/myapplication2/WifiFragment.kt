@@ -33,7 +33,7 @@ import android.widget.EditText
 
 
 
-class WifiFragment : Fragment(R.layout.fragment_wifi) {
+open class WifiFragment : Fragment(R.layout.fragment_wifi) {
 
     companion object {
         private const val NA = "-"

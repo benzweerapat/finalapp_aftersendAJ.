@@ -192,56 +192,14 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
         cellDetail: IndoorSignalPanelFragment.CellDetail?,
         wifiDetail: IndoorSignalPanelFragment.WifiDetail?
     ) {
-        val fragment = if (mode == IndoorSessionManager.RadioMode.CELLULAR) {
-            val detail = cellDetail ?: return
-            CellularDetailsFragment.newInstance(
-                CellularDetailArgs(
-                    tech = detail.tech,
-                    operatorName = detail.operatorName,
-                    rsrp = detail.rsrp,
-                    rsrq = detail.rsrq,
-                    sinr = detail.sinr,
-                    arfcn = detail.arfcn,
-                    freqBw = detail.freqBw,
-                    pci = detail.pci,
-                    tac = detail.tac,
-                    cellId = detail.cellId,
-                    latitude = detail.latitude,
-                    longitude = detail.longitude,
-                    floor = detail.floor,
-                    relHeight = detail.relHeight,
-                    absAltitude = detail.absAltitude,
-                    pressure = detail.pressure
-                )
-            )
-        } else {
-            val detail = wifiDetail ?: return
-            WifiDetailsFragment.newInstance(
-                WifiDetailArgs(
-                    ssid = detail.ssid,
-                    bssid = detail.bssid,
-                    rssi = detail.rssi,
-                    signalQuality = detail.signalQuality,
-                    snr = detail.snr,
-                    freq = detail.freq,
-                    channel = detail.channel,
-                    bw = detail.bw,
-                    linkSpeed = detail.linkSpeed,
-                    security = detail.security,
-                    latitude = detail.latitude,
-                    longitude = detail.longitude,
-                    floor = detail.floor,
-                    relHeight = detail.relHeight,
-                    absAltitude = detail.absAltitude,
-                    pressure = detail.pressure
-                )
-            )
+        val existing = parentFragmentManager.findFragmentByTag(IndoorDetailsPopupDialogFragment.tagName())
+        if (existing is IndoorDetailsPopupDialogFragment) {
+            existing.dismiss()
         }
 
-        parentFragmentManager.beginTransaction()
-            .replace(R.id.fragment_container, fragment)
-            .addToBackStack(if (mode == IndoorSessionManager.RadioMode.CELLULAR) "cellular_details" else "wifi_details")
-            .commit()
+        IndoorDetailsPopupDialogFragment
+            .newInstance(mode)
+            .show(parentFragmentManager, IndoorDetailsPopupDialogFragment.tagName())
     }
 
     private fun getWifiSnapshot(): SignalSnapshot {

@@ -27,7 +27,7 @@ import androidx.core.content.ContextCompat
 import kotlin.toString
 
 
-class CellularFragment : Fragment(R.layout.fragment_cellular) {
+open class CellularFragment : Fragment(R.layout.fragment_cellular) {
 
     private lateinit var mainActivity: MainActivity
     private lateinit var neighborAdapter: NeighborAdapter
