@@ -163,18 +163,37 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
         val networkType: String,
         val cellIdBssid: String,
         val rsrpRssi: Int,
-        val rsrqSinr: Int
+        val rsrqSinr: Int,
+        val operatorName: String = "-",
+        val arfcn: String = "-",
+        val freqBw: String = "-",
+        val ssid: String = "-",
+        val freq: String = "-",
+        val channel: String = "-",
+        val bw: String = "-",
+        val linkSpeed: String = "-",
+        val security: String = "-",
+        val mac: String = "-"
     )
 
     private fun getWifiSnapshot(): SignalSnapshot {
         return try {
             val wm = requireContext().applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
             val info = wm.connectionInfo
+            val freq = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) info?.frequency?.toString() ?: "-" else "-"
+            val channel = if (freq != "-") ((freq.toIntOrNull()?.minus(2407))?.div(5))?.toString() ?: "-" else "-"
             SignalSnapshot(
                 networkType = "WIFI",
                 cellIdBssid = info?.bssid ?: "-",
                 rsrpRssi = info?.rssi ?: -999,
-                rsrqSinr = 0
+                rsrqSinr = 0,
+                ssid = info?.ssid ?: "-",
+                freq = freq,
+                channel = channel,
+                bw = "-",
+                linkSpeed = "${info?.linkSpeed ?: 0} Mbps",
+                security = "-",
+                mac = info?.bssid ?: "-"
             )
         } catch (_: Exception) {
             SignalSnapshot("WIFI", "-", -999, 0)
@@ -191,7 +210,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
                     networkType = "LTE",
                     cellIdBssid = "PCI:${lte.cellIdentity.pci},CI:${lte.cellIdentity.ci}",
                     rsrpRssi = lte.cellSignalStrength.rsrp,
-                    rsrqSinr = lte.cellSignalStrength.rsrq
+                    rsrqSinr = lte.cellSignalStrength.rsrq,
+                    operatorName = tm.networkOperatorName ?: "-",
+                    arfcn = lte.cellIdentity.earfcn.toString(),
+                    freqBw = "EARFCN ${lte.cellIdentity.earfcn}",
                 )
             }
             val nr = cellInfos.filterIsInstance<CellInfoNr>().firstOrNull()
@@ -204,7 +226,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
                     networkType = "NR",
                     cellIdBssid = "PCI:${pci ?: -1},NCI:${nci ?: -1}",
                     rsrpRssi = ssRsrp ?: -999,
-                    rsrqSinr = ssRsrq ?: -999
+                    rsrqSinr = ssRsrq ?: -999,
+                    operatorName = tm.networkOperatorName ?: "-",
+                    arfcn = "-",
+                    freqBw = "NR"
                 )
             } else {
                 SignalSnapshot("CELL", "-", -999, -999)
@@ -242,8 +267,35 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
             else -> "RSRP ${snapshot.rsrpRssi} dBm"
         }
         val sub = "${snapshot.networkType} • ${snapshot.cellIdBssid} • RSRQ/SINR ${snapshot.rsrqSinr}"
-        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.updateSignal(main, sub)
+        val panel = childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment
+        panel?.updateSignal(main, sub)
+        panel?.setMode(IndoorSessionManager.radioMode)
+        if (IndoorSessionManager.radioMode == IndoorSessionManager.RadioMode.CELLULAR) {
+            panel?.updateCellDetail(
+                IndoorSignalPanelFragment.CellDetail(
+                    tech = snapshot.networkType,
+                    operatorName = snapshot.operatorName,
+                    rsrp = snapshot.rsrpRssi,
+                    rsrq = snapshot.rsrqSinr,
+                    arfcn = snapshot.arfcn,
+                    freqBw = snapshot.freqBw,
+                    cellId = snapshot.cellIdBssid
+                )
+            )
+        } else {
+            panel?.updateWifiDetail(
+                IndoorSignalPanelFragment.WifiDetail(
+                    ssid = snapshot.ssid,
+                    rssi = snapshot.rsrpRssi,
+                    freq = snapshot.freq,
+                    channel = snapshot.channel,
+                    bw = snapshot.bw,
+                    linkSpeed = snapshot.linkSpeed,
+                    security = snapshot.security,
+                    mac = snapshot.mac
+                )
+            )
+        }
     }
 
     private fun updatePointCount() {
