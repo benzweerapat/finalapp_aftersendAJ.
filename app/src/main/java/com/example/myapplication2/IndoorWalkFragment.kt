@@ -164,17 +164,85 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
         val cellIdBssid: String,
         val rsrpRssi: Int,
         val rsrqSinr: Int,
+        val sinr: String = "-",
         val operatorName: String = "-",
         val arfcn: String = "-",
         val freqBw: String = "-",
+        val pci: String = "-",
+        val tac: String = "-",
+        val latitude: String = "-",
+        val longitude: String = "-",
+        val floor: String = "-",
+        val relHeight: String = "-",
+        val absAltitude: String = "-",
+        val pressure: String = "-",
         val ssid: String = "-",
         val freq: String = "-",
         val channel: String = "-",
         val bw: String = "-",
         val linkSpeed: String = "-",
         val security: String = "-",
-        val mac: String = "-"
+        val mac: String = "-",
+        val signalQuality: String = "-",
+        val snr: String = "-"
     )
+
+    override fun onExpandDetailsRequested(
+        mode: IndoorSessionManager.RadioMode,
+        cellDetail: IndoorSignalPanelFragment.CellDetail?,
+        wifiDetail: IndoorSignalPanelFragment.WifiDetail?
+    ) {
+        val fragment = if (mode == IndoorSessionManager.RadioMode.CELLULAR) {
+            val detail = cellDetail ?: return
+            CellularDetailsFragment.newInstance(
+                CellularDetailArgs(
+                    tech = detail.tech,
+                    operatorName = detail.operatorName,
+                    rsrp = detail.rsrp,
+                    rsrq = detail.rsrq,
+                    sinr = detail.sinr,
+                    arfcn = detail.arfcn,
+                    freqBw = detail.freqBw,
+                    pci = detail.pci,
+                    tac = detail.tac,
+                    cellId = detail.cellId,
+                    latitude = detail.latitude,
+                    longitude = detail.longitude,
+                    floor = detail.floor,
+                    relHeight = detail.relHeight,
+                    absAltitude = detail.absAltitude,
+                    pressure = detail.pressure
+                )
+            )
+        } else {
+            val detail = wifiDetail ?: return
+            WifiDetailsFragment.newInstance(
+                WifiDetailArgs(
+                    ssid = detail.ssid,
+                    bssid = detail.bssid,
+                    rssi = detail.rssi,
+                    signalQuality = detail.signalQuality,
+                    snr = detail.snr,
+                    freq = detail.freq,
+                    channel = detail.channel,
+                    bw = detail.bw,
+                    linkSpeed = detail.linkSpeed,
+                    security = detail.security,
+                    latitude = detail.latitude,
+                    longitude = detail.longitude,
+                    floor = detail.floor,
+                    relHeight = detail.relHeight,
+                    absAltitude = detail.absAltitude,
+                    pressure = detail.pressure
+                )
+            )
+        }
+
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, fragment)
+            .addToBackStack(if (mode == IndoorSessionManager.RadioMode.CELLULAR) "cellular_details" else "wifi_details")
+            .commit()
+    }
 
     private fun getWifiSnapshot(): SignalSnapshot {
         return try {
@@ -182,18 +250,26 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
             val info = wm.connectionInfo
             val freq = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) info?.frequency?.toString() ?: "-" else "-"
             val channel = if (freq != "-") ((freq.toIntOrNull()?.minus(2407))?.div(5))?.toString() ?: "-" else "-"
+            val quality = info?.rssi?.let { ((it + 100).coerceIn(0, 100)).toString() + "%" } ?: "-"
+            val location = (activity as? MainActivity)?.latestLocation
             SignalSnapshot(
                 networkType = "WIFI",
                 cellIdBssid = info?.bssid ?: "-",
                 rsrpRssi = info?.rssi ?: -999,
                 rsrqSinr = 0,
+                latitude = location?.latitude?.toString() ?: "-",
+                longitude = location?.longitude?.toString() ?: "-",
+                absAltitude = location?.altitude?.toString() ?: "-",
+                pressure = (activity as? MainActivity)?.currentFilteredPressure?.toString() ?: "-",
                 ssid = info?.ssid ?: "-",
                 freq = freq,
                 channel = channel,
                 bw = "-",
                 linkSpeed = "${info?.linkSpeed ?: 0} Mbps",
                 security = "-",
-                mac = info?.bssid ?: "-"
+                mac = info?.bssid ?: "-",
+                signalQuality = quality,
+                snr = "N/A"
             )
         } catch (_: Exception) {
             SignalSnapshot("WIFI", "-", -999, 0)
@@ -206,14 +282,22 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
             val cellInfos = tm.allCellInfo.orEmpty()
             val lte = cellInfos.filterIsInstance<CellInfoLte>().firstOrNull()
             if (lte != null) {
+                val location = (activity as? MainActivity)?.latestLocation
                 return SignalSnapshot(
                     networkType = "LTE",
                     cellIdBssid = "PCI:${lte.cellIdentity.pci},CI:${lte.cellIdentity.ci}",
                     rsrpRssi = lte.cellSignalStrength.rsrp,
                     rsrqSinr = lte.cellSignalStrength.rsrq,
+                    sinr = lte.cellSignalStrength.rssnr.toString(),
                     operatorName = tm.networkOperatorName ?: "-",
                     arfcn = lte.cellIdentity.earfcn.toString(),
                     freqBw = "EARFCN ${lte.cellIdentity.earfcn}",
+                    pci = lte.cellIdentity.pci.toString(),
+                    tac = lte.cellIdentity.tac.toString(),
+                    latitude = location?.latitude?.toString() ?: "-",
+                    longitude = location?.longitude?.toString() ?: "-",
+                    absAltitude = location?.altitude?.toString() ?: "-",
+                    pressure = (activity as? MainActivity)?.currentFilteredPressure?.toString() ?: "-"
                 )
             }
             val nr = cellInfos.filterIsInstance<CellInfoNr>().firstOrNull()
@@ -277,22 +361,39 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
                     operatorName = snapshot.operatorName,
                     rsrp = snapshot.rsrpRssi,
                     rsrq = snapshot.rsrqSinr,
+                    sinr = snapshot.sinr,
                     arfcn = snapshot.arfcn,
                     freqBw = snapshot.freqBw,
-                    cellId = snapshot.cellIdBssid
+                    pci = snapshot.pci,
+                    tac = snapshot.tac,
+                    cellId = snapshot.cellIdBssid,
+                    latitude = snapshot.latitude,
+                    longitude = snapshot.longitude,
+                    floor = snapshot.floor,
+                    relHeight = snapshot.relHeight,
+                    absAltitude = snapshot.absAltitude,
+                    pressure = snapshot.pressure
                 )
             )
         } else {
             panel?.updateWifiDetail(
                 IndoorSignalPanelFragment.WifiDetail(
                     ssid = snapshot.ssid,
+                    bssid = snapshot.mac,
                     rssi = snapshot.rsrpRssi,
+                    signalQuality = snapshot.signalQuality,
+                    snr = snapshot.snr,
                     freq = snapshot.freq,
                     channel = snapshot.channel,
                     bw = snapshot.bw,
                     linkSpeed = snapshot.linkSpeed,
                     security = snapshot.security,
-                    mac = snapshot.mac
+                    latitude = snapshot.latitude,
+                    longitude = snapshot.longitude,
+                    floor = snapshot.floor,
+                    relHeight = snapshot.relHeight,
+                    absAltitude = snapshot.absAltitude,
+                    pressure = snapshot.pressure
                 )
             )
         }
