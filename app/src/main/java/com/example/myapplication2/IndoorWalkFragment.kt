@@ -254,14 +254,16 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 val nci = invokeLongGetter(nr.cellIdentity, "getNci")
                 val ssRsrp = invokeIntGetter(nr.cellSignalStrength, "getSsRsrp")
                 val ssRsrq = invokeIntGetter(nr.cellSignalStrength, "getSsRsrq")
+                val nrarfcn = invokeIntGetter(nr.cellIdentity, "getNrarfcn")
                 SignalSnapshot(
                     networkType = "NR",
                     cellIdBssid = "PCI:${pci ?: -1},NCI:${nci ?: -1}",
                     rsrpRssi = ssRsrp ?: -999,
                     rsrqSinr = ssRsrq ?: -999,
                     operatorName = tm.networkOperatorName ?: "-",
-                    arfcn = "-",
-                    freqBw = "NR"
+                    arfcn = (nrarfcn ?: -1).takeIf { it >= 0 }?.toString() ?: "-",
+                    freqBw = "NR",
+                    pci = (pci ?: -1).takeIf { it >= 0 }?.toString() ?: "-"
                 )
             } else {
                 SignalSnapshot("CELL", "-", -999, -999)
@@ -312,36 +314,82 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
 
     private fun buildWifiCollapsedSummary(snapshot: SignalSnapshot): String {
-        val ssid = snapshot.ssid.takeIf { it.isNotBlank() && it != "<unknown ssid>" && it != "-" } ?: "Hidden SSID"
-        val freqInt = snapshot.freq.toIntOrNull() ?: 0
+        val ssid = snapshot.ssid.takeIf { !it.isNullOrBlank() && it != "<unknown ssid>" && it != "-" } ?: "Hidden SSID"
+        val freqInt = snapshot.freq.toIntOrNull()
         val band = when {
-            freqInt in 2400..2500 -> "2.4GHz"
+            freqInt == null -> "-"
+            freqInt < 3000 -> "2.4GHz"
             freqInt in 4900..5900 -> "5GHz"
             freqInt in 5925..7125 -> "6GHz"
-            else -> "-"
+            else -> "${freqInt}MHz"
         }
-        val channel = snapshot.channel.takeIf { it.isNotBlank() && it != "-" } ?: "-"
-        val link = snapshot.linkSpeed.takeIf { it.isNotBlank() && it != "-" }
-        val sec = snapshot.security.takeIf { it.isNotBlank() && it != "-" }
-        val bssidShort = snapshot.mac.takeIf { it.contains(":") }?.let { "…:" + it.takeLast(5) }
+        val channel = snapshot.channel.takeIf { !it.isNullOrBlank() && it != "-" } ?: "-"
+        val link = snapshot.linkSpeed.takeIf { !it.isNullOrBlank() && it != "-" } ?: "— Mbps"
+        val security = simplifySecurity(snapshot.security)
+        val bssid = snapshot.mac.takeIf { !it.isNullOrBlank() && it != "-" } ?: "-"
 
-        val parts = mutableListOf("RSSI ${snapshot.rsrpRssi} dBm", ssid, "$band CH$channel")
-        if (link != null) parts.add(link)
-        if (sec != null) parts.add(sec)
-        if (bssidShort != null) parts.add(bssidShort)
-        return parts.joinToString(" · ")
+        return listOf(
+            ssid,
+            "$band CH$channel",
+            link,
+            security,
+            bssid
+        ).joinToString(" · ")
     }
 
     private fun buildCellCollapsedSummary(snapshot: SignalSnapshot): String {
-        val techBand = if (snapshot.networkType == "NR") "NR" else "LTE ${snapshot.freqBw}".trim()
-        val sinr = snapshot.sinr.takeIf { it != "-" }
-        val qPart = sinr?.let { "SINR $it" } ?: "RSRQ ${snapshot.rsrqSinr}"
+        val techBand = when (snapshot.networkType) {
+            "NR" -> "NR ${nrBandFromArfcn(snapshot.arfcn)}".trim()
+            else -> "LTE ${lteBandFromEarfcn(snapshot.arfcn)}".trim()
+        }
+        val sinrVal = snapshot.sinr.toDoubleOrNull()
+        val qualityPart = if (sinrVal != null) {
+            "SINR ${snapshot.sinr}"
+        } else {
+            "RSRQ ${snapshot.rsrqSinr}"
+        }
         val pci = snapshot.pci.takeIf { it != "-" } ?: "-"
-        val arfcn = snapshot.arfcn.takeIf { it != "-" }
+        val arfcnLabel = if (snapshot.networkType == "NR") "NRARFCN" else "EARFCN"
+        val arfcn = snapshot.arfcn.takeIf { it != "-" } ?: "-"
 
-        val parts = mutableListOf(techBand, "RSRP ${snapshot.rsrpRssi}", qPart, "PCI $pci")
-        if (arfcn != null) parts.add("EARFCN $arfcn")
-        return parts.joinToString(" · ")
+        return listOf(
+            techBand,
+            qualityPart,
+            "PCI $pci",
+            "$arfcnLabel $arfcn"
+        ).joinToString(" · ")
+    }
+
+    private fun simplifySecurity(raw: String): String {
+        val v = raw.uppercase(Locale.US)
+        return when {
+            v.contains("WPA3") -> "WPA3"
+            v.contains("WPA2") -> "WPA2"
+            v.contains("WPA") -> "WPA"
+            v.contains("OPEN") -> "OPEN"
+            raw.isBlank() || raw == "-" -> "—"
+            else -> raw
+        }
+    }
+
+    private fun lteBandFromEarfcn(arfcn: String): String {
+        val v = arfcn.toIntOrNull() ?: return "B?"
+        return when (v) {
+            in 0..599 -> "B1"
+            in 1200..1949 -> "B3"
+            in 2750..3449 -> "B7"
+            in 3450..3799 -> "B8"
+            else -> "B?"
+        }
+    }
+
+    private fun nrBandFromArfcn(arfcn: String): String {
+        val v = arfcn.toIntOrNull() ?: return "n?"
+        return when (v) {
+            in 620000..653333 -> "n78"
+            in 151600..160600 -> "n28"
+            else -> "n?"
+        }
     }
 
     private fun updatePointCount() {

@@ -72,7 +72,7 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         detailsContainer?.id = View.generateViewId()
 
         textSignalSub?.apply {
-            maxLines = 2
+            maxLines = 1
             ellipsize = TextUtils.TruncateAt.END
         }
 
