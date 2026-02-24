@@ -577,13 +577,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUnifiedSurveyButtonUi() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
-        if (currentEnv == CurrentEnv.INDOOR) {
-            scanBtn.isEnabled = true
-            scanBtn.text = if (indoorSurveyState == SurveyState.RUNNING) "STOP" else "START"
+        scanBtn.isEnabled = true
+        val running = if (currentEnv == CurrentEnv.INDOOR) {
+            indoorSurveyState == SurveyState.RUNNING
         } else {
-            scanBtn.isEnabled = true
-            scanBtn.text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+            isRecordingCsv || isRecordingWifiCsv
         }
+        applySurveyButtonState(scanBtn, running)
+    }
+
+    private fun applySurveyButtonState(button: Button, running: Boolean) {
+        button.text = if (running) "Stop" else "Start"
+        val icon = if (running) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        button.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
+        button.compoundDrawablePadding = 8
     }
 
     // ================== BUTTONS ==================
@@ -722,14 +729,12 @@ class MainActivity : AppCompatActivity() {
                         neighborCsvBuffer.clear()
                         beginCellularReportSession()
                         isRecordingCsv = true
-                        scanBtn.text = "STOP"
                         updateUnifiedSurveyButtonUi()
 
                     } else {
 
                         // STOP (เหมือนเดิม)
                         isRecordingCsv = false
-                        scanBtn.text = "START"
                         updateUnifiedSurveyButtonUi()
 
                         saveCellularCsv()
@@ -773,12 +778,10 @@ class MainActivity : AppCompatActivity() {
                         wifiNeighborCsvBuffer.clear()
                         isRecordingWifiCsv = true
                         beginWifiReportSession()
-                        scanBtn.text = "STOP"
                         updateUnifiedSurveyButtonUi()
 
                     } else {
                         isRecordingWifiCsv = false
-                        scanBtn.text = "START"
                         updateUnifiedSurveyButtonUi()
 
                         if (!canWriteLegacyStorage()) {
