@@ -26,7 +26,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     private lateinit var mapView: IndoorPlotImageView
     private val uiHandler = Handler(Looper.getMainLooper())
-    private var surveyActive = IndoorSessionManager.surveyRunning
 
     private val pickFloorPlanLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -50,12 +49,13 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     }
 
     fun startSurvey() {
+        IndoorSessionManager.surveyRunning = true
         setSurveyRunning(true)
         Toast.makeText(requireContext(), "Indoor survey started", Toast.LENGTH_SHORT).show()
     }
 
     fun stopSurvey() {
-        if (!surveyActive) return
+        if (!IndoorSessionManager.surveyRunning) return
         setSurveyRunning(false)
         exportCsv(showToast = true)
         IndoorSessionManager.points.clear()
@@ -65,10 +65,9 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         Toast.makeText(requireContext(), "Indoor survey stopped", Toast.LENGTH_SHORT).show()
     }
 
-    fun isSurveyRunning(): Boolean = surveyActive
+    fun isSurveyRunning(): Boolean = IndoorSessionManager.surveyRunning
 
     fun setSurveyRunning(running: Boolean) {
-        surveyActive = running
         IndoorSessionManager.surveyRunning = running
     }
 
@@ -77,7 +76,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         super.onViewCreated(view, savedInstanceState)
 
         mapView = view.findViewById(R.id.indoorMapView)
-        surveyActive = IndoorSessionManager.surveyRunning
         ensureDefaultConfigIfMissing()
 
         if (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) == null) {
@@ -91,7 +89,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
 
         mapView.onPointAdded = { nx, ny ->
-            if (!surveyActive) {
+            if (!IndoorSessionManager.surveyRunning) {
                 Toast.makeText(requireContext(), "Survey ended", Toast.LENGTH_SHORT).show()
             } else {
                 recordPoint(nx.toFloat(), ny.toFloat())
