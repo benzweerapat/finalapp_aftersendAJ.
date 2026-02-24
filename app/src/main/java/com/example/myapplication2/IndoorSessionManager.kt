@@ -40,6 +40,7 @@ object IndoorSessionManager {
     var config: IndoorConfig? = null
     var radioMode: RadioMode = RadioMode.CELLULAR
     var importedFloorPlanUri: Uri? = null
+    var surveyRunning: Boolean = false
     val plottedPointsNormalized: MutableList<Pair<Double, Double>> = mutableListOf()
     val points: MutableList<IndoorTestPoint> = mutableListOf()
     val checkpoints: MutableList<IndoorCheckpoint> = mutableListOf()
@@ -49,6 +50,7 @@ object IndoorSessionManager {
     }
 
     fun clearWalk() {
+        surveyRunning = false
         checkpoints.clear()
         points.clear()
         plottedPointsNormalized.clear()

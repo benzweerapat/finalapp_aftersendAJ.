@@ -561,6 +561,10 @@ class MainActivity : AppCompatActivity() {
     fun isIndoorDriveMode(): Boolean = currentDriveMode == DriveMode.INDOOR
 
     private fun renderCurrentScreen() {
+        if (currentEnv == CurrentEnv.INDOOR) {
+            indoorSurveyState = if (IndoorSessionManager.surveyRunning) SurveyState.RUNNING else SurveyState.IDLE
+        }
+
         val fragment = if (currentEnv == CurrentEnv.INDOOR) {
             IndoorSessionManager.radioMode = if (currentTech == CurrentTech.WIFI) IndoorSessionManager.RadioMode.WIFI else IndoorSessionManager.RadioMode.CELLULAR
             IndoorWalkFragment()
@@ -571,6 +575,12 @@ class MainActivity : AppCompatActivity() {
             .replace(R.id.fragment_container, fragment)
             .commit()
 
+        if (currentEnv == CurrentEnv.INDOOR) {
+            supportFragmentManager.executePendingTransactions()
+            (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
+                ?.setSurveyRunning(IndoorSessionManager.surveyRunning)
+        }
+
         updateCurrentModeLabel("${if (currentTech == CurrentTech.WIFI) "WiFi" else "Cellular"}${if (currentEnv == CurrentEnv.INDOOR) " (Indoor Walk Test)" else ""}")
         updateUnifiedSurveyButtonUi()
     }
@@ -579,7 +589,7 @@ class MainActivity : AppCompatActivity() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
         scanBtn.isEnabled = true
         val running = if (currentEnv == CurrentEnv.INDOOR) {
-            indoorSurveyState == SurveyState.RUNNING
+            IndoorSessionManager.surveyRunning
         } else {
             isRecordingCsv || isRecordingWifiCsv
         }
@@ -753,9 +763,11 @@ class MainActivity : AppCompatActivity() {
                         calibrateAltitude(startFloor)
                         fragment.startSurvey()
                         indoorSurveyState = SurveyState.RUNNING
+                        IndoorSessionManager.surveyRunning = true
                     } else {
                         fragment.stopSurvey()
                         indoorSurveyState = SurveyState.IDLE
+                        IndoorSessionManager.surveyRunning = false
                     }
                     updateUnifiedSurveyButtonUi()
                 }

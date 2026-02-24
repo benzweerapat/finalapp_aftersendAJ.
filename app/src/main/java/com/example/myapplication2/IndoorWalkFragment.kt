@@ -26,7 +26,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     private lateinit var mapView: IndoorPlotImageView
     private val uiHandler = Handler(Looper.getMainLooper())
-    private var surveyActive = false
+    private var surveyActive = IndoorSessionManager.surveyRunning
 
     private val pickFloorPlanLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -50,13 +50,13 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     }
 
     fun startSurvey() {
-        surveyActive = true
+        setSurveyRunning(true)
         Toast.makeText(requireContext(), "Indoor survey started", Toast.LENGTH_SHORT).show()
     }
 
     fun stopSurvey() {
         if (!surveyActive) return
-        surveyActive = false
+        setSurveyRunning(false)
         exportCsv(showToast = true)
         IndoorSessionManager.points.clear()
         IndoorSessionManager.plottedPointsNormalized.clear()
@@ -67,11 +67,17 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     fun isSurveyRunning(): Boolean = surveyActive
 
+    fun setSurveyRunning(running: Boolean) {
+        surveyActive = running
+        IndoorSessionManager.surveyRunning = running
+    }
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         mapView = view.findViewById(R.id.indoorMapView)
+        surveyActive = IndoorSessionManager.surveyRunning
         ensureDefaultConfigIfMissing()
 
         if (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) == null) {
