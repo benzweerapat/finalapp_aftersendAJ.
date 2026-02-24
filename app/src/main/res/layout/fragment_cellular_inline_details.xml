@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212"
+    android:fillViewport="true"
+    tools:context=".CellularFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="8dp"
+        android:paddingBottom="24dp">
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="16dp"
+                android:gravity="top">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="bottom">
+
+                    <TextView
+                        android:id="@+id/techLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textStyle="bold"
+                        android:textColor="#00D1B2"
+                        android:textSize="24sp"
+                        android:paddingEnd="8dp" />
+
+                    <TextView
+                        android:id="@+id/bandLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textStyle="bold"
+                        android:textColor="#B0BEC5"
+                        android:textSize="18sp"
+                        android:layout_marginBottom="2dp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="end"
+                    android:paddingEnd="12dp">
+
+                    <TextView
+                        android:id="@+id/netOperatorLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Operator"
+                        android:textColor="#80FFFFFF"
+                        android:textSize="8sp" />
+
+                    <TextView
+                        android:id="@+id/operatorValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="—"
+                        android:textColor="#FFFFFF"
+                        android:textStyle="bold"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/statusIcons"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+                    <ImageView android:id="@+id/iconSim" android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_call" android:padding="2dp" android:contentDescription="SIM"/>
+                    <ImageView android:id="@+id/iconCall" android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_call" android:padding="2dp" android:contentDescription="Call"/>
+                    <ImageView android:id="@+id/iconData" android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_upload" android:padding="2dp" android:contentDescription="Data"/>
+                    <ImageView android:id="@+id/iconGps" android:layout_width="20dp" android:layout_height="20dp" android:src="@android:drawable/ic_menu_mylocation" android:padding="2dp" android:contentDescription="GPS"/>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:baselineAligned="false"
+                android:padding="16dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingEnd="8dp">
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RSRP" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/rsrpValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textStyle="bold" android:textSize="22sp" android:textColor="#FFFFFF"/>
+
+                    <View android:layout_width="match_parent" android:layout_height="12dp"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="RSRQ" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/rsrqValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textStyle="bold" android:textSize="18sp" android:textColor="#E0E0E0"/>
+
+                    <TextView android:id="@+id/taValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TA: --" android:textColor="#80FFFFFF" android:textSize="11sp" />
+                    <TextView android:id="@+id/rssnrValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SINR: -- dB" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/bwValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="BW: -- MHz" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="#333333"
+                    android:layout_marginHorizontal="8dp"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:paddingStart="8dp">
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ARFCN" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/arfcnValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textStyle="bold" android:textSize="18sp" android:textColor="#E0E0E0"/>
+
+                    <View android:layout_width="match_parent" android:layout_height="12dp"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FREQ / BW" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/freqBwValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textStyle="bold" android:textSize="16sp" android:textColor="#E0E0E0"/>
+
+                    <TextView android:id="@+id/eciValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ECI: --" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/enbValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="eNB CI: --" android:textColor="#80FFFFFF" android:textSize="11sp"/>
+                    <TextView android:id="@+id/cellIdBlock" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="—" android:textColor="#B0BEC5" android:textSize="12sp" android:layout_marginTop="4dp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="12dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="top"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Location"
+                    android:textColor="#80FFFFFF"
+                    android:textSize="11sp"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/latLngValue"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="— / —"
+                    android:textColor="#FFFFFF"
+                    android:textSize="14sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:baselineAligned="false">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.95"
+                        android:orientation="vertical"
+                        android:paddingEnd="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Altitude From Barometer"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginBottom="4dp"/>
+
+                        <TextView
+                            android:id="@+id/textFloor"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Floor: -"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#22C55E" />
+                        <TextView
+                            android:id="@+id/textBaroEstimated"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="estimated level"
+                            android:textColor="#22C55E"
+                            android:textSize="11sp"
+                            android:layout_marginBottom="4dp"/>
+
+
+                        <TextView
+                            android:id="@+id/textAltitude"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Rel. Height: - m"
+                            android:textColor="#E0E0E0"
+                            android:textSize="12sp"/>
+
+                        <TextView
+                            android:id="@+id/textPressure"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Pressure: - hPa"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginBottom="8dp"/>
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:background="#2C2C2C"
+                        android:layout_marginHorizontal="8dp"/>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="0.95"
+                        android:orientation="vertical"
+                        android:paddingStart="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Altitude From GPS"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginBottom="4dp"/>
+
+                        <TextView
+                            android:id="@+id/textGpsFloor"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Floor: -"
+                            android:textSize="18sp"
+                            android:textStyle="bold"
+                            android:textColor="#22C55E"/>
+                        <TextView
+                            android:id="@+id/textGpsEstimated"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="estimated level"
+                            android:textColor="#22C55E"
+                            android:textSize="11sp"
+                            android:layout_marginBottom="4dp"/>
+
+
+                        <TextView
+                            android:id="@+id/textGpsRelHeight"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Rel. Height: - m"
+                            android:textColor="#E0E0E0"
+                            android:textSize="12sp"/>
+
+                        <TextView
+                            android:id="@+id/textGpsAltitude"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Abs. Alt: - m"
+                            android:textColor="#80FFFFFF"
+                            android:textSize="11sp"
+                            android:layout_marginTop="2dp"/>
+                    </LinearLayout>
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="match_parent"
+                        android:background="#2C2C2C"
+                        android:layout_marginHorizontal="8dp"/>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.1"
+                        android:orientation="vertical"
+                        android:paddingStart="8dp"
+                        android:gravity="top">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnCalibrate"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="30dp"
+                            android:minHeight="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:text="Set Ground"
+                            android:textAllCaps="false"
+                            android:textSize="9sp"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:textColor="#60A5FA"
+                            app:strokeColor="#3B82F6"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="20dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnReset"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="30dp"
+                            android:minHeight="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:layout_marginTop="4dp"
+                            android:text="Reset"
+                            android:textAllCaps="false"
+                            android:textSize="9sp"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:textColor="#F87171"
+                            app:strokeColor="#EF4444"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="20dp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnEditFloorHeight"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="28dp"
+                            android:minHeight="0dp"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:layout_marginTop="4dp"
+                            android:text="Edit Height"
+                            android:textAllCaps="false"
+                            android:textSize="9sp"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            android:textColor="#FB923C"
+                            app:strokeColor="#F97316"
+                            app:strokeWidth="1dp"
+                            app:cornerRadius="16dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NEIGHBOR CELLS"
+            android:textStyle="bold"
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="8dp" />
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardBackgroundColor="#1E1E1E"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:background="#2C2C2C"
+                    android:paddingVertical="8dp"
+                    android:paddingHorizontal="12dp">
+
+                    <TextView android:layout_width="36dp" android:layout_height="wrap_content" android:text="#" android:textColor="#B0BEC5" android:textSize="11sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="64dp" android:layout_height="wrap_content" android:text="Tech" android:textColor="#B0BEC5" android:textSize="11sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="ARFCN" android:textColor="#B0BEC5" android:textSize="11sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="RSRP" android:textColor="#B0BEC5" android:textSize="11sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="PCI" android:textColor="#B0BEC5" android:textSize="11sp" android:textStyle="bold"/>
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/neighborsRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:padding="4dp"
+                    android:overScrollMode="never"/>
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

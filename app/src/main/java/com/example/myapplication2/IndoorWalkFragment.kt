@@ -187,21 +187,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
         val snr: String = "-"
     )
 
-    override fun onExpandDetailsRequested(
-        mode: IndoorSessionManager.RadioMode,
-        cellDetail: IndoorSignalPanelFragment.CellDetail?,
-        wifiDetail: IndoorSignalPanelFragment.WifiDetail?
-    ) {
-        val existing = parentFragmentManager.findFragmentByTag(IndoorDetailsPopupDialogFragment.tagName())
-        if (existing is IndoorDetailsPopupDialogFragment) {
-            existing.dismiss()
-        }
-
-        IndoorDetailsPopupDialogFragment
-            .newInstance(mode)
-            .show(parentFragmentManager, IndoorDetailsPopupDialogFragment.tagName())
-    }
-
     private fun getWifiSnapshot(): SignalSnapshot {
         return try {
             val wm = requireContext().applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager

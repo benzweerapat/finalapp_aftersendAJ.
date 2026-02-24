@@ -2,20 +2,20 @@ package com.example.myapplication2
 
 import android.content.Context
 import android.os.Bundle
+import android.transition.AutoTransition
+import android.transition.TransitionManager
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 
 class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel) {
 
     interface Listener {
         fun onEndSurveyClicked()
-        fun onExpandDetailsRequested(
-            mode: IndoorSessionManager.RadioMode,
-            cellDetail: CellDetail?,
-            wifiDetail: WifiDetail?
-        )
     }
 
     data class CellDetail(
@@ -61,10 +61,13 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     private var textSignalSub: TextView? = null
     private var textPointCount: TextView? = null
     private var btnToggle: Button? = null
+    private var detailsContainer: FrameLayout? = null
 
     private var currentMode = IndoorSessionManager.RadioMode.CELLULAR
     private var currentCellDetail: CellDetail? = null
     private var currentWifiDetail: WifiDetail? = null
+    private var expandedItemId: Long? = null
+    private val transition = AutoTransition().apply { duration = 180 }
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
@@ -82,14 +85,16 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         textSignalSub = view.findViewById(R.id.textSignalSub)
         textPointCount = view.findViewById(R.id.textPointCount)
         btnToggle = view.findViewById(R.id.btnToggleDetails)
+        detailsContainer = view.findViewById(R.id.detailsContainer)
+        detailsContainer?.id = View.generateViewId()
 
         view.findViewById<Button>(R.id.btnEndSurvey).setOnClickListener {
             listener?.onEndSurveyClicked()
         }
         btnToggle?.setOnClickListener {
-            listener?.onExpandDetailsRequested(currentMode, currentCellDetail, currentWifiDetail)
+            toggleInlineDetails()
         }
-        btnToggle?.text = "ขยายข้อมูล"
+        refreshToggleUi()
     }
 
     fun updateSignal(main: String, sub: String) {
@@ -102,7 +107,13 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     }
 
     fun setMode(mode: IndoorSessionManager.RadioMode) {
+        if (currentMode == mode) return
         currentMode = mode
+        if (expandedItemId != null) {
+            expandedItemId = null
+            removeInlineDetails()
+            refreshToggleUi()
+        }
     }
 
     fun updateCellDetail(detail: CellDetail) {
@@ -111,5 +122,85 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
 
     fun updateWifiDetail(detail: WifiDetail) {
         currentWifiDetail = detail
+    }
+
+    private fun toggleInlineDetails() {
+        val itemId = currentMode.ordinal.toLong()
+        if (expandedItemId == itemId) {
+            expandedItemId = null
+            removeInlineDetails()
+        } else {
+            expandedItemId = itemId
+            showInlineDetails()
+        }
+        refreshToggleUi()
+    }
+
+    private fun showInlineDetails() {
+        val container = detailsContainer ?: return
+        val containerId = container.id
+        if (containerId == View.NO_ID) return
+
+        val fragment = when (currentMode) {
+            IndoorSessionManager.RadioMode.CELLULAR -> {
+                val c = currentCellDetail
+                CellularInlineDetailsFragment.newInstance(
+                    CellularInlineDetailData(
+                        tech = c?.tech ?: "-",
+                        operatorName = c?.operatorName ?: "-",
+                        rsrp = c?.rsrp ?: -999,
+                        rsrq = c?.rsrq ?: -999,
+                        arfcn = c?.arfcn ?: "-",
+                        freqBw = c?.freqBw ?: "-",
+                        pci = c?.pci ?: "-",
+                        tac = c?.tac ?: "-",
+                        cellId = c?.cellId ?: "-",
+                        latitude = c?.latitude ?: "-",
+                        longitude = c?.longitude ?: "-"
+                    )
+                )
+            }
+            IndoorSessionManager.RadioMode.WIFI -> {
+                val w = currentWifiDetail
+                WifiInlineDetailsFragment.newInstance(
+                    WifiInlineDetailData(
+                        ssid = w?.ssid ?: "-",
+                        rssi = w?.rssi ?: -999,
+                        frequency = w?.freq ?: "-",
+                        channel = w?.channel ?: "-",
+                        linkSpeed = w?.linkSpeed ?: "-",
+                        security = w?.security ?: "-",
+                        bssid = w?.bssid ?: "-",
+                        latitude = w?.latitude ?: "-",
+                        longitude = w?.longitude ?: "-"
+                    )
+                )
+            }
+        }
+
+        TransitionManager.beginDelayedTransition(view as? ViewGroup ?: return, transition)
+        container.isVisible = true
+        childFragmentManager.beginTransaction()
+            .replace(containerId, fragment, "inline_detail_${currentMode.name}")
+            .commitNowAllowingStateLoss()
+    }
+
+    private fun removeInlineDetails() {
+        val container = detailsContainer ?: return
+        val id = container.id
+        if (id == View.NO_ID) return
+
+        childFragmentManager.findFragmentById(id)?.let {
+            childFragmentManager.beginTransaction()
+                .remove(it)
+                .commitNowAllowingStateLoss()
+        }
+        TransitionManager.beginDelayedTransition(view as? ViewGroup ?: return, transition)
+        container.isVisible = false
+    }
+
+    private fun refreshToggleUi() {
+        val expanded = expandedItemId == currentMode.ordinal.toLong()
+        btnToggle?.text = if (expanded) "ย่อข้อมูล ▲" else "ขยายข้อมูล ▼"
     }
 }
