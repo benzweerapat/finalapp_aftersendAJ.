@@ -22,11 +22,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignalPanelFragment.Listener {
+class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     private lateinit var mapView: IndoorPlotImageView
     private val uiHandler = Handler(Looper.getMainLooper())
-    private var surveyActive = true
+    private var surveyActive = false
 
     private val pickFloorPlanLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -48,6 +48,25 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
         IndoorSessionManager.radioMode = mode
         if (isAdded) refreshSignalPanel()
     }
+
+    fun startSurvey() {
+        surveyActive = true
+        Toast.makeText(requireContext(), "Indoor survey started", Toast.LENGTH_SHORT).show()
+    }
+
+    fun stopSurvey() {
+        if (!surveyActive) return
+        surveyActive = false
+        exportCsv(showToast = true)
+        IndoorSessionManager.points.clear()
+        IndoorSessionManager.plottedPointsNormalized.clear()
+        mapView.setPointsNormalized(emptyList())
+        updatePointCount()
+        Toast.makeText(requireContext(), "Indoor survey stopped", Toast.LENGTH_SHORT).show()
+    }
+
+    fun isSurveyRunning(): Boolean = surveyActive
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -105,20 +124,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
     override fun onPause() {
         super.onPause()
         uiHandler.removeCallbacks(signalTicker)
-    }
-
-    override fun onEndSurveyClicked() {
-        if (!surveyActive) return
-        surveyActive = false
-        exportCsv(showToast = true)
-
-        // clear all points as requested
-        IndoorSessionManager.points.clear()
-        IndoorSessionManager.plottedPointsNormalized.clear()
-        mapView.setPointsNormalized(emptyList())
-        updatePointCount()
-
-        Toast.makeText(requireContext(), "End Survey completed", Toast.LENGTH_SHORT).show()
     }
 
     private fun ensureDefaultConfigIfMissing() {
@@ -289,57 +294,54 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk), IndoorSignal
             IndoorSessionManager.RadioMode.WIFI -> getWifiSnapshot()
             IndoorSessionManager.RadioMode.CELLULAR -> getCellularSnapshot()
         }
-        val main = when (snapshot.networkType) {
-            "WIFI" -> "RSSI ${snapshot.rsrpRssi} dBm"
-            else -> "RSRP ${snapshot.rsrpRssi} dBm"
+        val main = if (IndoorSessionManager.radioMode == IndoorSessionManager.RadioMode.WIFI) {
+            "RSSI ${snapshot.rsrpRssi} dBm"
+        } else {
+            "RSRP ${snapshot.rsrpRssi} dBm"
         }
-        val sub = "${snapshot.networkType} • ${snapshot.cellIdBssid} • RSRQ/SINR ${snapshot.rsrqSinr}"
+        val sub = if (IndoorSessionManager.radioMode == IndoorSessionManager.RadioMode.WIFI) {
+            buildWifiCollapsedSummary(snapshot)
+        } else {
+            buildCellCollapsedSummary(snapshot)
+        }
         val panel = childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment
         panel?.updateSignal(main, sub)
         panel?.setMode(IndoorSessionManager.radioMode)
-        if (IndoorSessionManager.radioMode == IndoorSessionManager.RadioMode.CELLULAR) {
-            panel?.updateCellDetail(
-                IndoorSignalPanelFragment.CellDetail(
-                    tech = snapshot.networkType,
-                    operatorName = snapshot.operatorName,
-                    rsrp = snapshot.rsrpRssi,
-                    rsrq = snapshot.rsrqSinr,
-                    sinr = snapshot.sinr,
-                    arfcn = snapshot.arfcn,
-                    freqBw = snapshot.freqBw,
-                    pci = snapshot.pci,
-                    tac = snapshot.tac,
-                    cellId = snapshot.cellIdBssid,
-                    latitude = snapshot.latitude,
-                    longitude = snapshot.longitude,
-                    floor = snapshot.floor,
-                    relHeight = snapshot.relHeight,
-                    absAltitude = snapshot.absAltitude,
-                    pressure = snapshot.pressure
-                )
-            )
-        } else {
-            panel?.updateWifiDetail(
-                IndoorSignalPanelFragment.WifiDetail(
-                    ssid = snapshot.ssid,
-                    bssid = snapshot.mac,
-                    rssi = snapshot.rsrpRssi,
-                    signalQuality = snapshot.signalQuality,
-                    snr = snapshot.snr,
-                    freq = snapshot.freq,
-                    channel = snapshot.channel,
-                    bw = snapshot.bw,
-                    linkSpeed = snapshot.linkSpeed,
-                    security = snapshot.security,
-                    latitude = snapshot.latitude,
-                    longitude = snapshot.longitude,
-                    floor = snapshot.floor,
-                    relHeight = snapshot.relHeight,
-                    absAltitude = snapshot.absAltitude,
-                    pressure = snapshot.pressure
-                )
-            )
+    }
+
+
+
+    private fun buildWifiCollapsedSummary(snapshot: SignalSnapshot): String {
+        val ssid = snapshot.ssid.takeIf { it.isNotBlank() && it != "<unknown ssid>" && it != "-" } ?: "Hidden SSID"
+        val freqInt = snapshot.freq.toIntOrNull() ?: 0
+        val band = when {
+            freqInt in 2400..2500 -> "2.4GHz"
+            freqInt in 4900..5900 -> "5GHz"
+            freqInt in 5925..7125 -> "6GHz"
+            else -> "-"
         }
+        val channel = snapshot.channel.takeIf { it.isNotBlank() && it != "-" } ?: "-"
+        val link = snapshot.linkSpeed.takeIf { it.isNotBlank() && it != "-" }
+        val sec = snapshot.security.takeIf { it.isNotBlank() && it != "-" }
+        val bssidShort = snapshot.mac.takeIf { it.contains(":") }?.let { "…:" + it.takeLast(5) }
+
+        val parts = mutableListOf("RSSI ${snapshot.rsrpRssi} dBm", ssid, "$band CH$channel")
+        if (link != null) parts.add(link)
+        if (sec != null) parts.add(sec)
+        if (bssidShort != null) parts.add(bssidShort)
+        return parts.joinToString(" · ")
+    }
+
+    private fun buildCellCollapsedSummary(snapshot: SignalSnapshot): String {
+        val techBand = if (snapshot.networkType == "NR") "NR" else "LTE ${snapshot.freqBw}".trim()
+        val sinr = snapshot.sinr.takeIf { it != "-" }
+        val qPart = sinr?.let { "SINR $it" } ?: "RSRQ ${snapshot.rsrqSinr}"
+        val pci = snapshot.pci.takeIf { it != "-" } ?: "-"
+        val arfcn = snapshot.arfcn.takeIf { it != "-" }
+
+        val parts = mutableListOf(techBand, "RSRP ${snapshot.rsrpRssi}", qPart, "PCI $pci")
+        if (arfcn != null) parts.add("EARFCN $arfcn")
+        return parts.joinToString(" · ")
     }
 
     private fun updatePointCount() {

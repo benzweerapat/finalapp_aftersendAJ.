@@ -53,15 +53,6 @@
                 android:text="Show Details ▼"
                 android:textAllCaps="false"
                 android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/btnEndSurvey"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:layout_marginStart="6dp"
-                android:text="End Survey"
-                android:textAllCaps="false"
-                android:textSize="12sp" />
         </LinearLayout>
 
         <FrameLayout

@@ -48,6 +48,10 @@ class MainActivity : AppCompatActivity() {
         INDOOR("Indoor", "Indoor")
     }
 
+    enum class CurrentTech { WIFI, CELL }
+    enum class CurrentEnv { INDOOR, OUTDOOR }
+    enum class SurveyState { IDLE, RUNNING }
+
     // ================== GLOBAL ==================
     var latestLocation: Location? = null
     var currentFilteredPressure: Float = 0f
@@ -73,6 +77,9 @@ class MainActivity : AppCompatActivity() {
     var isRecordingCsv = false
     var isGroundSet = false
     private var currentDriveMode = DriveMode.OUTDOOR
+    private var currentTech = CurrentTech.CELL
+    private var currentEnv = CurrentEnv.OUTDOOR
+    private var indoorSurveyState = SurveyState.IDLE
 
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
@@ -324,11 +331,7 @@ class MainActivity : AppCompatActivity() {
         setupButtons()
 
         if (savedInstanceState == null) {
-            // วาง Fragment หลังจากตัวแปร (โซน 1) พร้อมแล้ว
-            // เผื่อใน CellularFragment มีการดึงค่า SessionCounter ไปโชว์ จะได้ไม่ Error
-            supportFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, CellularFragment())
-                .commit()
+            renderCurrentScreen()
         }
 
         // -------------------------------------------------
@@ -557,6 +560,32 @@ class MainActivity : AppCompatActivity() {
 
     fun isIndoorDriveMode(): Boolean = currentDriveMode == DriveMode.INDOOR
 
+    private fun renderCurrentScreen() {
+        val fragment = if (currentEnv == CurrentEnv.INDOOR) {
+            IndoorSessionManager.radioMode = if (currentTech == CurrentTech.WIFI) IndoorSessionManager.RadioMode.WIFI else IndoorSessionManager.RadioMode.CELLULAR
+            IndoorWalkFragment()
+        } else {
+            if (currentTech == CurrentTech.WIFI) WifiFragment() else CellularFragment()
+        }
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.fragment_container, fragment)
+            .commit()
+
+        updateCurrentModeLabel("${if (currentTech == CurrentTech.WIFI) "WiFi" else "Cellular"}${if (currentEnv == CurrentEnv.INDOOR) " (Indoor Walk Test)" else ""}")
+        updateUnifiedSurveyButtonUi()
+    }
+
+    private fun updateUnifiedSurveyButtonUi() {
+        val scanBtn = findViewById<Button>(R.id.saveCsvButton)
+        if (currentEnv == CurrentEnv.INDOOR) {
+            scanBtn.isEnabled = true
+            scanBtn.text = if (indoorSurveyState == SurveyState.RUNNING) "STOP" else "START"
+        } else {
+            scanBtn.isEnabled = true
+            scanBtn.text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
+        }
+    }
+
     // ================== BUTTONS ==================
     private fun setupButtons() {
 
@@ -568,40 +597,24 @@ class MainActivity : AppCompatActivity() {
         refreshFloorHeightButtonLabel()
         updateDriveModeButtonUi()
         updateCurrentModeLabel("Cellular")
+        updateUnifiedSurveyButtonUi()
 
         btnDriveMode.setOnClickListener {
-            if (isRecordingCsv || isRecordingWifiCsv) {
+            if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
                 toast("Stop recording before changing drive mode")
                 return@setOnClickListener
             }
 
             currentDriveMode =
                 if (currentDriveMode == DriveMode.OUTDOOR) DriveMode.INDOOR else DriveMode.OUTDOOR
+            currentEnv = if (currentDriveMode == DriveMode.INDOOR) CurrentEnv.INDOOR else CurrentEnv.OUTDOOR
 
             updateDriveModeButtonUi()
-            if (currentDriveMode == DriveMode.INDOOR) {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, IndoorWalkFragment())
-                    .commit()
-                findViewById<Button>(R.id.saveCsvButton).apply {
-                    isEnabled = false
-                    text = "Use End Survey"
-                }
-                updateCurrentModeLabel("${IndoorSessionManager.radioMode.name} (Indoor Walk Test)")
-            } else {
-                supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, CellularFragment())
-                    .commit()
-                findViewById<Button>(R.id.saveCsvButton).apply {
-                    isEnabled = true
-                    text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
-                }
-                updateCurrentModeLabel("Cellular")
-            }
+            renderCurrentScreen()
             toast("Drive mode: ${currentDriveMode.label}")
         }
         btnSelectFloor.setOnClickListener {
-            if (isRecordingCsv || isRecordingWifiCsv) {
+            if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
                 toast("Stop recording before changing floor")
                 return@setOnClickListener
             }
@@ -613,7 +626,7 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<ImageView>(R.id.btnMenu).setOnClickListener { view ->
 
-            if (isRecordingCsv || isRecordingWifiCsv) {
+            if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
                 toast("Stop recording before changing mode")
                 return@setOnClickListener
             }
@@ -623,7 +636,7 @@ class MainActivity : AppCompatActivity() {
 
             popup.menuInflater.inflate(R.menu.scan_menu, popup.menu)
 
-            val isRecordingNow = isRecordingCsv || isRecordingWifiCsv
+            val isRecordingNow = isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING
 
             // 🔒 ถ้ากำลัง Recording → disable menu
             popup.menu.findItem(R.id.menu_cellular).isEnabled = !isRecordingNow
@@ -640,20 +653,14 @@ class MainActivity : AppCompatActivity() {
                 when (item.itemId) {
                     R.id.menu_cellular -> {
                         if (currentDriveMode == DriveMode.INDOOR) {
-                            IndoorSessionManager.radioMode = IndoorSessionManager.RadioMode.CELLULAR
+                            currentTech = CurrentTech.CELL
                             (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
                                 ?.setRadioMode(IndoorSessionManager.RadioMode.CELLULAR)
-                            updateCurrentModeLabel("Cellular (Indoor Walk Test)")
+                            renderCurrentScreen()
                             true
                         } else {
-                            supportFragmentManager.beginTransaction()
-                                .replace(R.id.fragment_container, CellularFragment())
-                                .commit()
-                            findViewById<Button>(R.id.saveCsvButton).apply {
-                                isEnabled = true
-                                text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
-                            }
-                            updateCurrentModeLabel("Cellular")
+                            currentTech = CurrentTech.CELL
+                            renderCurrentScreen()
                             true
                         }
                     }
@@ -667,21 +674,14 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         if (currentDriveMode == DriveMode.INDOOR) {
-                            IndoorSessionManager.radioMode = IndoorSessionManager.RadioMode.WIFI
+                            currentTech = CurrentTech.WIFI
                             (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
                                 ?.setRadioMode(IndoorSessionManager.RadioMode.WIFI)
-                            updateCurrentModeLabel("WiFi (Indoor Walk Test)")
+                            renderCurrentScreen()
                             true
                         } else {
-                            supportFragmentManager.beginTransaction()
-                                .replace(R.id.fragment_container, WifiFragment())
-                                .commit()
-
-                            findViewById<Button>(R.id.saveCsvButton).apply {
-                                isEnabled = true
-                                text = if (isRecordingCsv || isRecordingWifiCsv) "STOP" else "START"
-                            }
-                            updateCurrentModeLabel("WiFi")
+                            currentTech = CurrentTech.WIFI
+                            renderCurrentScreen()
                             true
                         }
                     }
@@ -723,12 +723,14 @@ class MainActivity : AppCompatActivity() {
                         beginCellularReportSession()
                         isRecordingCsv = true
                         scanBtn.text = "STOP"
+                        updateUnifiedSurveyButtonUi()
 
                     } else {
 
                         // STOP (เหมือนเดิม)
                         isRecordingCsv = false
                         scanBtn.text = "START"
+                        updateUnifiedSurveyButtonUi()
 
                         saveCellularCsv()
                         saveNeighborCsv()
@@ -742,7 +744,15 @@ class MainActivity : AppCompatActivity() {
 
 
                 is IndoorWalkFragment -> {
-                    toast("Indoor Walk ใช้ปุ่ม End Survey / Export CSV ในหน้าแผนที่")
+                    if (indoorSurveyState == SurveyState.IDLE) {
+                        calibrateAltitude(startFloor)
+                        fragment.startSurvey()
+                        indoorSurveyState = SurveyState.RUNNING
+                    } else {
+                        fragment.stopSurvey()
+                        indoorSurveyState = SurveyState.IDLE
+                    }
+                    updateUnifiedSurveyButtonUi()
                 }
 
                 // ================= WIFI =================
@@ -764,10 +774,12 @@ class MainActivity : AppCompatActivity() {
                         isRecordingWifiCsv = true
                         beginWifiReportSession()
                         scanBtn.text = "STOP"
+                        updateUnifiedSurveyButtonUi()
 
                     } else {
                         isRecordingWifiCsv = false
                         scanBtn.text = "START"
+                        updateUnifiedSurveyButtonUi()
 
                         if (!canWriteLegacyStorage()) {
                             toast("Storage permission required")
@@ -1000,7 +1012,7 @@ class MainActivity : AppCompatActivity() {
         val hint = findViewById<TextView>(R.id.startHintText)
 
         // ถ้ากำลังอัด → START ต้องกดได้ และไม่ต้องมีข้อความเตือน
-        if (isRecordingCsv || isRecordingWifiCsv) {
+        if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
             scanBtn.isEnabled = true
             scanBtn.alpha = 1f
             hint.visibility = View.GONE

@@ -1,7 +1,7 @@
 package com.example.myapplication2
 
-import android.content.Context
 import android.os.Bundle
+import android.text.TextUtils
 import android.transition.AutoTransition
 import android.transition.TransitionManager
 import android.view.View
@@ -13,10 +13,6 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 
 class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel) {
-
-    interface Listener {
-        fun onEndSurveyClicked()
-    }
 
     data class CellDetail(
         val tech: String,
@@ -56,7 +52,6 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         val pressure: String
     )
 
-    private var listener: Listener? = null
     private var textSignalMain: TextView? = null
     private var textSignalSub: TextView? = null
     private var textPointCount: TextView? = null
@@ -64,20 +59,8 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     private var detailsContainer: FrameLayout? = null
 
     private var currentMode = IndoorSessionManager.RadioMode.CELLULAR
-    private var currentCellDetail: CellDetail? = null
-    private var currentWifiDetail: WifiDetail? = null
     private var expandedItemId: Long? = null
     private val transition = AutoTransition().apply { duration = 180 }
-
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
-        listener = parentFragment as? Listener
-    }
-
-    override fun onDetach() {
-        super.onDetach()
-        listener = null
-    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -88,12 +71,12 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         detailsContainer = view.findViewById(R.id.detailsContainer)
         detailsContainer?.id = View.generateViewId()
 
-        view.findViewById<Button>(R.id.btnEndSurvey).setOnClickListener {
-            listener?.onEndSurveyClicked()
+        textSignalSub?.apply {
+            maxLines = 2
+            ellipsize = TextUtils.TruncateAt.END
         }
-        btnToggle?.setOnClickListener {
-            toggleInlineDetails()
-        }
+
+        btnToggle?.setOnClickListener { toggleInlineDetails() }
         refreshToggleUi()
     }
 
@@ -114,14 +97,6 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
             removeInlineDetails()
             refreshToggleUi()
         }
-    }
-
-    fun updateCellDetail(detail: CellDetail) {
-        currentCellDetail = detail
-    }
-
-    fun updateWifiDetail(detail: WifiDetail) {
-        currentWifiDetail = detail
     }
 
     private fun toggleInlineDetails() {
