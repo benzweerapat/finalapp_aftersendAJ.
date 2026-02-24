@@ -33,7 +33,7 @@ import android.widget.EditText
 
 
 
-class WifiFragment : Fragment(R.layout.fragment_wifi) {
+open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layoutRes) {
 
     companion object {
         private const val NA = "-"
@@ -89,6 +89,15 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
     private var iconWifi: ImageView? = null
     private var wifiBlinkAnimator: ObjectAnimator? = null
     private var currentSsid: String = "Unknown"
+
+    private val gpsStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!isAdded) return
+            val info = wifiManager.connectionInfo
+            val isConnected = info != null && info.networkId != -1
+            updateStatusIcons(isConnected)
+        }
+    }
 
     private fun startWifiBlink() {
         if (wifiBlinkAnimator != null) return
@@ -378,6 +387,12 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
                 IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
             )
         }
+        val gpsFilter = IntentFilter().apply {
+            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+            addAction("android.location.MODE_CHANGED")
+            addAction(WifiManager.WIFI_STATE_CHANGED_ACTION)
+        }
+        requireContext().registerReceiver(gpsStateReceiver, gpsFilter)
 
         handler.post(wifiRunnable)
     }
@@ -387,6 +402,7 @@ class WifiFragment : Fragment(R.layout.fragment_wifi) {
         super.onPause()
         stopWifiBlink()
         try { requireContext().unregisterReceiver(wifiScanReceiver) } catch (_: Exception) {}
+        try { requireContext().unregisterReceiver(gpsStateReceiver) } catch (_: Exception) {}
         handler.removeCallbacks(wifiRunnable)
     }
 

@@ -1,7 +1,10 @@
 package com.example.myapplication2
 
 import android.annotation.SuppressLint
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.location.LocationManager
@@ -27,7 +30,7 @@ import androidx.core.content.ContextCompat
 import kotlin.toString
 
 
-class CellularFragment : Fragment(R.layout.fragment_cellular) {
+open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragment(layoutRes) {
 
     private lateinit var mainActivity: MainActivity
     private lateinit var neighborAdapter: NeighborAdapter
@@ -75,6 +78,15 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
     private var btnReset: View? = null
     private var btnEditFloorHeight: View? = null
     private var textGpsEstimated: TextView? = null
+
+    private val gpsStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (!isAdded) return
+            val tm = requireContext().getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+            updateStatusIcons(tm)
+        }
+    }
+
 
     private val scanRunnable = object : Runnable {
         override fun run() {
@@ -297,11 +309,17 @@ class CellularFragment : Fragment(R.layout.fragment_cellular) {
         updateStatusIcons(
             requireContext().getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         )
+        val filter = IntentFilter().apply {
+            addAction(LocationManager.PROVIDERS_CHANGED_ACTION)
+            addAction("android.location.MODE_CHANGED")
+        }
+        requireContext().registerReceiver(gpsStateReceiver, filter)
         handler.post(scanRunnable)
     }
 
     override fun onPause() {
         super.onPause()
+        try { requireContext().unregisterReceiver(gpsStateReceiver) } catch (_: Exception) {}
         handler.removeCallbacks(scanRunnable)
     }
 

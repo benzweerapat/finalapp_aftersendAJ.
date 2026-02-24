@@ -142,41 +142,12 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         if (containerId == View.NO_ID) return
 
         val fragment = when (currentMode) {
-            IndoorSessionManager.RadioMode.CELLULAR -> {
-                val c = currentCellDetail
-                CellularInlineDetailsFragment.newInstance(
-                    CellularInlineDetailData(
-                        tech = c?.tech ?: "-",
-                        operatorName = c?.operatorName ?: "-",
-                        rsrp = c?.rsrp ?: -999,
-                        rsrq = c?.rsrq ?: -999,
-                        arfcn = c?.arfcn ?: "-",
-                        freqBw = c?.freqBw ?: "-",
-                        pci = c?.pci ?: "-",
-                        tac = c?.tac ?: "-",
-                        cellId = c?.cellId ?: "-",
-                        latitude = c?.latitude ?: "-",
-                        longitude = c?.longitude ?: "-"
-                    )
-                )
-            }
-            IndoorSessionManager.RadioMode.WIFI -> {
-                val w = currentWifiDetail
-                WifiInlineDetailsFragment.newInstance(
-                    WifiInlineDetailData(
-                        ssid = w?.ssid ?: "-",
-                        rssi = w?.rssi ?: -999,
-                        frequency = w?.freq ?: "-",
-                        channel = w?.channel ?: "-",
-                        linkSpeed = w?.linkSpeed ?: "-",
-                        security = w?.security ?: "-",
-                        bssid = w?.bssid ?: "-",
-                        latitude = w?.latitude ?: "-",
-                        longitude = w?.longitude ?: "-"
-                    )
-                )
-            }
+            IndoorSessionManager.RadioMode.CELLULAR -> CellularDetailsFragment()
+            IndoorSessionManager.RadioMode.WIFI -> WifiDetailsFragment()
         }
+
+        val maxHeight = (resources.displayMetrics.heightPixels * 0.25f).toInt()
+        container.layoutParams = container.layoutParams.apply { height = maxHeight }
 
         TransitionManager.beginDelayedTransition(view as? ViewGroup ?: return, transition)
         container.isVisible = true
@@ -197,10 +168,11 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         }
         TransitionManager.beginDelayedTransition(view as? ViewGroup ?: return, transition)
         container.isVisible = false
+        container.layoutParams = container.layoutParams.apply { height = ViewGroup.LayoutParams.WRAP_CONTENT }
     }
 
     private fun refreshToggleUi() {
         val expanded = expandedItemId == currentMode.ordinal.toLong()
-        btnToggle?.text = if (expanded) "ย่อข้อมูล ▲" else "ขยายข้อมูล ▼"
+        btnToggle?.text = if (expanded) "Hide Details ▲" else "Show Details ▼"
     }
 }

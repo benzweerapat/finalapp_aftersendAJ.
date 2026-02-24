@@ -50,7 +50,7 @@
                 android:id="@+id/btnToggleDetails"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="ขยายข้อมูล ▼"
+                android:text="Show Details ▼"
                 android:textAllCaps="false"
                 android:textSize="12sp" />
 
