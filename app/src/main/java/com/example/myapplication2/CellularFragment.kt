@@ -176,7 +176,7 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
 
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
-        btnReset.visibility = View.GONE
+        btnReset?.visibility = View.GONE
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
         updateEditHeightButtonLabel(mainActivity.getFloorHeightButtonLabel())
 
