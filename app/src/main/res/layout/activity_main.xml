@@ -72,7 +72,7 @@
                 android:id="@+id/btnDriveMode"
                 android:layout_width="wrap_content"
                 android:layout_height="40dp"
-                android:text="Outdoor"
+                android:text="GNSS"
                 android:textAllCaps="false"
                 android:textSize="12sp"
                 android:textColor="#22C55E"
@@ -85,6 +85,7 @@
             <!-- ปุ่มเลือกชั้น -->
             <Button
                 android:id="@+id/btnSelectFloor"
+                android:visibility="gone"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
                 android:layout_weight="1"

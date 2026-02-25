@@ -551,7 +551,7 @@
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:text="Set Ground"
+                            android:text="Select floor"
                             android:textAllCaps="false"
                             android:textSize="9sp"
                             android:maxLines="1"
@@ -565,6 +565,7 @@
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/btnReset"
+                            android:visibility="gone"
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="30dp"

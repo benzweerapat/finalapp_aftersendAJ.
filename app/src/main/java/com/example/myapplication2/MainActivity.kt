@@ -44,8 +44,8 @@ import android.telephony.CellInfoNr
 class MainActivity : AppCompatActivity() {
 
     enum class DriveMode(val label: String, val folderName: String) {
-        OUTDOOR("Outdoor", "Outdoor"),
-        INDOOR("Indoor", "Indoor")
+        OUTDOOR("GNSS", "GNSS"),
+        INDOOR("Floor plan", "FloorPlan")
     }
 
     enum class CurrentTech { WIFI, CELL }
@@ -581,7 +581,7 @@ class MainActivity : AppCompatActivity() {
                 ?.setSurveyRunning(IndoorSessionManager.surveyRunning)
         }
 
-        updateCurrentModeLabel("${if (currentTech == CurrentTech.WIFI) "WiFi" else "Cellular"}${if (currentEnv == CurrentEnv.INDOOR) " (Indoor Walk Test)" else ""}")
+        updateCurrentModeLabel("${if (currentTech == CurrentTech.WIFI) "WiFi" else "Cellular"}${if (currentEnv == CurrentEnv.INDOOR) " (Floor plan)" else ""}")
         updateUnifiedSurveyButtonUi()
     }
 
@@ -608,8 +608,8 @@ class MainActivity : AppCompatActivity() {
 
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
         val btnDriveMode = findViewById<Button>(R.id.btnDriveMode)
-        val btnSelectFloor =
-            findViewById<Button>(R.id.btnSelectFloor)
+        val btnSelectFloor: Button? =
+            findViewById(R.id.btnSelectFloor)
         updateFloorButtonLabel()
         refreshFloorHeightButtonLabel()
         updateDriveModeButtonUi()
@@ -630,7 +630,7 @@ class MainActivity : AppCompatActivity() {
             renderCurrentScreen()
             toast("Drive mode: ${currentDriveMode.label}")
         }
-        btnSelectFloor.setOnClickListener {
+        btnSelectFloor?.setOnClickListener {
             if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
                 toast("Stop recording before changing floor")
                 return@setOnClickListener

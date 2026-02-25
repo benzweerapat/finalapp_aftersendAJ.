@@ -176,6 +176,7 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
 
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
+        btnReset.visibility = View.GONE
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
         updateEditHeightButtonLabel(mainActivity.getFloorHeightButtonLabel())
 
@@ -266,7 +267,7 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
     fun setGroundButtonsVisible(visible: Boolean) {
         val v = if (visible) View.VISIBLE else View.GONE
         btnCalibrate?.visibility = v
-        btnReset?.visibility = v
+        btnReset?.visibility = View.GONE
         btnEditFloorHeight?.visibility = v
     }
     fun showGroundUiAfterStart() {

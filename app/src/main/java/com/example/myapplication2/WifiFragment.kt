@@ -114,7 +114,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
     fun setGroundButtonsVisible(visible: Boolean) {
         val v = if (visible) View.VISIBLE else View.GONE
         btnCalibrate?.visibility = v
-        btnReset?.visibility = v
+        btnReset?.visibility = View.GONE
         btnEditFloorHeight?.visibility = v
     }
 
@@ -269,6 +269,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
         // Buttons
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
+        btnReset.visibility = View.GONE
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
         updateEditHeightButtonLabel(mainActivity.getFloorHeightButtonLabel())
 
