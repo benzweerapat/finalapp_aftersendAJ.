@@ -17,7 +17,9 @@ import android.telephony.CellInfoNr
 import android.telephony.TelephonyManager
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
@@ -161,6 +163,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     fun setSurveyRunning(running: Boolean) {
         IndoorSessionManager.surveyRunning = running
+        updateGroundButtonsEnabledState()
         updateAddPointButtonUi()
     }
 
@@ -225,6 +228,26 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 updatePointCount()
                 Toast.makeText(requireContext(), "Cleared all points", Toast.LENGTH_SHORT).show()
             }
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnCalibrateClickListener {
+                if (IndoorSessionManager.surveyRunning) {
+                    Toast.makeText(requireContext(), "Stop recording before changing floor", Toast.LENGTH_SHORT).show()
+                    return@setOnCalibrateClickListener
+                }
+                (activity as? MainActivity)?.showStartFloorDialog { selectedFloor ->
+                    (activity as? MainActivity)?.onIndoorStartFloorSelected(selectedFloor)
+                    updateGroundControlLabels()
+                    Toast.makeText(requireContext(), "Selected floor: $selectedFloor", Toast.LENGTH_SHORT).show()
+                }
+            }
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnEditFloorHeightClickListener {
+                if (IndoorSessionManager.surveyRunning) {
+                    Toast.makeText(requireContext(), "Stop recording before editing floor height", Toast.LENGTH_SHORT).show()
+                    return@setOnEditFloorHeightClickListener
+                }
+                showEditFloorHeightDialog()
+            }
 
         mapView.setImageFromUri(IndoorSessionManager.importedFloorPlanUri ?: IndoorSessionManager.config?.imageUri)
         mapView.setPlotEnabled(true)
@@ -237,6 +260,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
 
         updatePointCount()
+        updateGroundControlLabels()
+        updateGroundButtonsEnabledState()
         updateAddPointButtonUi()
         refreshSignalPanel()
     }
@@ -255,6 +280,39 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val enabled = startPrerequisitesReady
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setAddPointEnabled(enabled)
+    }
+
+    fun updateGroundControlLabels() {
+        val main = activity as? MainActivity ?: return
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)?.apply {
+            updateCalibrateButtonLabel(main.getStartFloorButtonLabel())
+            updateEditFloorHeightButtonLabel(main.getFloorHeightButtonLabel())
+        }
+    }
+
+    private fun updateGroundButtonsEnabledState() {
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setGroundButtonsEnabled(!IndoorSessionManager.surveyRunning)
+    }
+
+    private fun showEditFloorHeightDialog() {
+        val main = activity as? MainActivity ?: return
+        val input = EditText(requireContext())
+        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        input.setText(main.floorHeightMeters.toString())
+        AlertDialog.Builder(requireContext())
+            .setTitle("Floor Height (m)")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val v = input.text.toString().toFloatOrNull()
+                if (v != null && v > 0f) {
+                    main.onFloorHeightSelected(v)
+                    updateGroundControlLabels()
+                    Toast.makeText(requireContext(), "Saved: $v m", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun ensureDefaultConfigIfMissing() {

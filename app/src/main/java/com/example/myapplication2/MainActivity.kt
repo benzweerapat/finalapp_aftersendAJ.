@@ -473,7 +473,7 @@ class MainActivity : AppCompatActivity() {
 
 
 
-    private fun showStartFloorDialog(onConfirm: (Int) -> Unit) {
+    fun showStartFloorDialog(onConfirm: (Int) -> Unit) {
 
         val floors = arrayOf("1", "2", "3", "4", "5", "Custom")
 
@@ -505,6 +505,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnSelectFloor)?.text = label
     }
 
+    fun getStartFloorButtonLabel(): String {
+        return if (hasSelectedStartFloor) "Floor $startFloor" else "Floor --"
+    }
+
     fun getFloorHeightButtonLabel(): String {
         return if (hasSelectedFloorHeight) {
             "Height = ${"%.1f".format(Locale.US, floorHeightMeters)} m"
@@ -517,6 +521,7 @@ class MainActivity : AppCompatActivity() {
         when (val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)) {
             is CellularFragment -> fragment.updateEditHeightButtonLabel(getFloorHeightButtonLabel())
             is WifiFragment -> fragment.updateEditHeightButtonLabel(getFloorHeightButtonLabel())
+            is IndoorWalkFragment -> fragment.updateGroundControlLabels()
         }
     }
 
@@ -524,6 +529,11 @@ class MainActivity : AppCompatActivity() {
         floorHeightMeters = heightMeters
         hasSelectedFloorHeight = true
         refreshFloorHeightButtonLabel()
+    }
+
+    fun onIndoorStartFloorSelected(selectedFloor: Int) {
+        startFloor = selectedFloor
+        hasSelectedStartFloor = true
     }
 
     private fun validateSelectionsBeforeStart(): Boolean {
@@ -768,6 +778,7 @@ class MainActivity : AppCompatActivity() {
                         indoorSurveyState = SurveyState.IDLE
                         IndoorSessionManager.surveyRunning = false
                     } else {
+                        if (!validateSelectionsBeforeStart()) return@setOnClickListener
                         calibrateAltitude(startFloor)
                         fragment.startSurvey()
                         indoorSurveyState = SurveyState.RUNNING
@@ -1109,8 +1120,19 @@ class MainActivity : AppCompatActivity() {
                 val hasImportedFloorPlan = IndoorSessionManager.importedFloorPlanUri != null
                 var canStart = hasImportedFloorPlan
 
+                val hasFloorSelection = hasSelectedStartFloor
+                val hasHeightSelection = hasSelectedFloorHeight
                 if (!hasImportedFloorPlan) {
                     showStartHint("Please browse Floor plan image first")
+                } else if (!hasFloorSelection && !hasHeightSelection) {
+                    canStart = false
+                    showStartHint("Please select Floor and Edit Height before START")
+                } else if (!hasFloorSelection) {
+                    canStart = false
+                    showStartHint("Please select Floor before START")
+                } else if (!hasHeightSelection) {
+                    canStart = false
+                    showStartHint("Please select Edit Height before START")
                 } else if (currentTech == CurrentTech.CELL) {
                     val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
                     val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager

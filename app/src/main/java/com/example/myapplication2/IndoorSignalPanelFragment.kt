@@ -59,11 +59,15 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     private var btnAddPoint: Button? = null
     private var btnUndo: Button? = null
     private var btnClear: Button? = null
+    private var btnCalibrate: Button? = null
+    private var btnEditFloorHeight: Button? = null
     private var detailsContainer: FrameLayout? = null
 
     private var onAddPointClick: (() -> Unit)? = null
     private var onUndoClick: (() -> Unit)? = null
     private var onClearClick: (() -> Unit)? = null
+    private var onCalibrateClick: (() -> Unit)? = null
+    private var onEditFloorHeightClick: (() -> Unit)? = null
 
     private var currentMode = IndoorSessionManager.RadioMode.CELLULAR
     private var expandedItemId: Long? = null
@@ -78,6 +82,8 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnAddPoint = view.findViewById(R.id.btnAddPoint)
         btnUndo = view.findViewById(R.id.btnUndo)
         btnClear = view.findViewById(R.id.btnClear)
+        btnCalibrate = view.findViewById(R.id.btnCalibrate)
+        btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
         detailsContainer = view.findViewById(R.id.detailsContainer)
         detailsContainer?.id = View.generateViewId()
 
@@ -90,6 +96,8 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnAddPoint?.setOnClickListener { onAddPointClick?.invoke() }
         btnUndo?.setOnClickListener { onUndoClick?.invoke() }
         btnClear?.setOnClickListener { onClearClick?.invoke() }
+        btnCalibrate?.setOnClickListener { onCalibrateClick?.invoke() }
+        btnEditFloorHeight?.setOnClickListener { onEditFloorHeightClick?.invoke() }
         refreshToggleUi()
     }
 
@@ -113,6 +121,30 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
 
     fun setOnClearClickListener(listener: (() -> Unit)?) {
         onClearClick = listener
+    }
+
+    fun setOnCalibrateClickListener(listener: (() -> Unit)?) {
+        onCalibrateClick = listener
+    }
+
+    fun setOnEditFloorHeightClickListener(listener: (() -> Unit)?) {
+        onEditFloorHeightClick = listener
+    }
+
+    fun updateCalibrateButtonLabel(label: String) {
+        btnCalibrate?.text = label
+    }
+
+    fun updateEditFloorHeightButtonLabel(label: String) {
+        btnEditFloorHeight?.text = label
+    }
+
+    fun setGroundButtonsEnabled(enabled: Boolean) {
+        val alpha = if (enabled) 1f else 0.5f
+        btnCalibrate?.isEnabled = enabled
+        btnCalibrate?.alpha = alpha
+        btnEditFloorHeight?.isEnabled = enabled
+        btnEditFloorHeight?.alpha = alpha
     }
 
     fun setAddPointStartRequiredHint(visible: Boolean) {
