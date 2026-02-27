@@ -31,6 +31,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     private var calibrationPoints = mutableListOf<Pair<Double, Double>>()
     private var calibrationSession: CalibrationSession? = null
     private var draggingPointIndex: Int? = null
+    private var calibrationModeActive: Boolean = false
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
@@ -38,6 +39,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             imageView.setImageURI(uri)
             calibrationPoints.clear()
             calibrationSession = null
+            calibrationModeActive = false
             syncOverlay()
             updateSummary()
         }
@@ -65,8 +67,10 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             }
             calibrationPoints.clear()
             calibrationSession = null
+            calibrationModeActive = true
             syncOverlay()
-            updateSummary("เลือกจุด 1-4: บนซ้าย → บนขวา → ล่างขวา → ล่างซ้าย")
+            showCalibrationStartDialog()
+            updateSummary("Calibration Mode พร้อมใช้งาน: เลือกจุด 1-4 (บนซ้าย → บนขวา → ล่างขวา → ล่างซ้าย)")
         }
 
         imageView.setOnTouchListener { _, event ->
@@ -82,7 +86,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     }
 
     private fun handleTouch(event: MotionEvent) {
-        if (selectedImageUri == null) return
+        if (selectedImageUri == null || !calibrationModeActive) return
         val normalized = NormalizedCoordinateMapper.viewToNormalized(imageView, event.x, event.y) ?: return
         val drawable = imageView.drawable ?: return
         val px = normalized.first * drawable.intrinsicWidth
@@ -170,7 +174,25 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             homographyMatrix = matrix.toList(),
             createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date())
         )
+        calibrationModeActive = false
         updateSummary("Calibration complete")
+    }
+
+
+    private fun showCalibrationStartDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Calibration Mode")
+            .setMessage(
+                """เริ่มเลือก 4 จุดตามลำดับ:
+1) บนซ้าย
+2) บนขวา
+3) ล่างขวา
+4) ล่างซ้าย
+
+สามารถลาก marker เพื่อปรับตำแหน่งได้"""
+            )
+            .setPositiveButton("เริ่ม") { _, _ -> }
+            .show()
     }
 
     private fun goToSurvey() {
@@ -217,7 +239,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
                 0.00000899,
                 lonScale
             )
-        } ?: "Calibration: ยังไม่พร้อม (ต้องครบ 4 จุด)"
+        } ?: if (calibrationModeActive) "Calibration: กำลังเลือกจุดอ้างอิง (ต้องครบ 4 จุด)" else "Calibration: ยังไม่พร้อม (กด Start Calibration)"
         calibrationSummary.text = listOfNotNull(base, extra).joinToString("\n")
     }
 
