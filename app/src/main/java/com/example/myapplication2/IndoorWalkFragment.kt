@@ -1122,7 +1122,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         if (showToast) {
             Toast.makeText(
                 requireContext(),
-                if (ok) "Saved: Download/DriveTest/FloorPlan/FloorPlan/$exportSubDir/$servingFileName (+ neighbor)" else "Export failed",
+                if (ok) "Saved: Download/DriveTest/FloorPlan/$exportSubDir/$servingFileName (+ neighbor)" else "Export failed",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -1134,7 +1134,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/FloorPlan/$subDir")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/$subDir")
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val resolver = requireContext().contentResolver
@@ -1152,7 +1152,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             } else {
                 val dir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "DriveTest/FloorPlan/FloorPlan/$subDir"
+                    "DriveTest/FloorPlan/$subDir"
                 )
                 if (!dir.exists()) dir.mkdirs()
                 val file = File(dir, fileName)
