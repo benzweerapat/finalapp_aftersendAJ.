@@ -34,6 +34,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     private lateinit var mapView: IndoorPlotImageView
     private var startPrerequisitesReady: Boolean = true
     private val uiHandler = Handler(Looper.getMainLooper())
+    private val calibrationPointsNormalized = mutableListOf<Pair<Double, Double>>()
+    private var calibrationLocked: Boolean = false
 
     private data class FloorPlanPointRecord(
         val timestamp: String,
@@ -142,9 +144,16 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     }
 
     fun startSurvey() {
+        IndoorSessionManager.config = IndoorSessionManager.config?.copy(calibrationSession = null)
+        calibrationPointsNormalized.clear()
+        calibrationLocked = false
+        mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+        mapView.setCalibrationCursorEnabled(true)
+
         IndoorSessionManager.surveyRunning = true
         setSurveyRunning(true)
-        Toast.makeText(requireContext(), "Floor plan survey started", Toast.LENGTH_SHORT).show()
+        showCalibrationRequiredDialog()
+        Toast.makeText(requireContext(), "Survey started: press Calibration and pin 4 points", Toast.LENGTH_LONG).show()
     }
 
     fun stopSurvey() {
@@ -153,6 +162,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         exportCsv(showToast = true)
         IndoorSessionManager.points.clear()
         IndoorSessionManager.plottedPointsNormalized.clear()
+        IndoorSessionManager.config = IndoorSessionManager.config?.copy(calibrationSession = null)
+        calibrationPointsNormalized.clear()
+        calibrationLocked = false
+        mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+        mapView.setCalibrationCursorEnabled(false)
         pointRecords.clear()
         neighborRecords.clear()
         refreshMapPoints()
@@ -191,6 +205,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             ?.setOnAddPointClickListener {
                 if (!IndoorSessionManager.surveyRunning) {
                     (activity as? MainActivity)?.showStartHint("Please press START first")
+                    return@setOnAddPointClickListener
+                }
+                if (IndoorSessionManager.config?.calibrationSession == null) {
+                    Toast.makeText(requireContext(), "Please complete Calibration (4 flags) before Add Point", Toast.LENGTH_SHORT).show()
                     return@setOnAddPointClickListener
                 }
                 val pinTip = mapView.getPinTipNormalized()
@@ -257,13 +275,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         view.findViewById<Button>(R.id.btnResetView).setOnClickListener { mapView.resetViewFitScreen() }
 
         view.findViewById<Button>(R.id.btnCalibration).setOnClickListener {
-            if (IndoorSessionManager.surveyRunning) {
-                Toast.makeText(requireContext(), "Stop recording before calibration", Toast.LENGTH_SHORT).show()
+            if (!IndoorSessionManager.surveyRunning) {
+                Toast.makeText(requireContext(), "Please press START before calibration", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            parentFragmentManager.beginTransaction()
-                .replace(R.id.fragment_container, IndoorSetupFragment())
-                .commit()
+            captureCalibrationFlagAtPin()
         }
 
         view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
@@ -287,10 +303,110 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         uiHandler.removeCallbacks(signalTicker)
     }
 
+    private fun showCalibrationRequiredDialog() {
+        if (!isAdded) return
+        AlertDialog.Builder(requireContext())
+            .setTitle("Calibration Required")
+            .setMessage("ก่อน Add Point ต้องกด Calibration และปักธงให้ครบ 4 จุด แล้วกรอกความยาว 2 ด้าน")
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
     private fun updateAddPointButtonUi() {
-        val enabled = startPrerequisitesReady
+        val calibrationReady = IndoorSessionManager.config?.calibrationSession != null
+        val enabled = startPrerequisitesReady && calibrationReady && IndoorSessionManager.surveyRunning
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setAddPointEnabled(enabled)
+    }
+
+    private fun captureCalibrationFlagAtPin() {
+        if (calibrationLocked) {
+            Toast.makeText(requireContext(), "Calibration already saved for this run", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val pinTip = mapView.getPinTipNormalized()
+        if (pinTip == null) {
+            Toast.makeText(requireContext(), "Move map so flag is over floor plan", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (calibrationPointsNormalized.size >= 4) {
+            Toast.makeText(requireContext(), "Calibration pointsครบแล้ว", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        calibrationPointsNormalized.add(pinTip)
+        mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+
+        if (calibrationPointsNormalized.size < 4) {
+            Toast.makeText(requireContext(), "Calibration point ${calibrationPointsNormalized.size}/4 saved", Toast.LENGTH_SHORT).show()
+            return
+        }
+        showCalibrationDimensionsDialog()
+    }
+
+    private fun showCalibrationDimensionsDialog() {
+        val container = View.inflate(requireContext(), R.layout.dialog_calibration_dimensions, null)
+        val widthInput = container.findViewById<EditText>(R.id.inputRealWidth)
+        val heightInput = container.findViewById<EditText>(R.id.inputRealHeight)
+        widthInput.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        heightInput.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Calibration Dimensions")
+            .setMessage("Enter real width/height in meters")
+            .setView(container)
+            .setPositiveButton("Save") { _, _ ->
+                val realWidth = widthInput.text.toString().toDoubleOrNull()
+                val realHeight = heightInput.text.toString().toDoubleOrNull()
+                if (realWidth == null || realHeight == null || realWidth <= 0.0 || realHeight <= 0.0) {
+                    Toast.makeText(requireContext(), "Width/Height must be > 0", Toast.LENGTH_SHORT).show()
+                    calibrationPointsNormalized.removeLastOrNull()
+                    mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+                    return@setPositiveButton
+                }
+                saveCalibrationSession(realWidth, realHeight)
+            }
+            .setNegativeButton("Cancel") { _, _ ->
+                calibrationPointsNormalized.removeLastOrNull()
+                mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+            }
+            .show()
+    }
+
+    private fun saveCalibrationSession(realWidth: Double, realHeight: Double) {
+        val drawable = mapView.drawable ?: return
+        if (calibrationPointsNormalized.size != 4) return
+        val pixels = calibrationPointsNormalized.map {
+            PixelPoint(it.first * drawable.intrinsicWidth, it.second * drawable.intrinsicHeight)
+        }
+        val matrix = try {
+            IndoorCoordinateTransformer.solveHomography(pixels, realWidth, realHeight)
+        } catch (e: IllegalArgumentException) {
+            Toast.makeText(requireContext(), e.message ?: "Calibration failed", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val config = IndoorSessionManager.config ?: return
+        IndoorSessionManager.config = config.copy(
+            calibrationSession = CalibrationSession(
+                sessionId = "cal-${System.currentTimeMillis()}",
+                floorplanId = config.floorName,
+                imageWidth = drawable.intrinsicWidth,
+                imageHeight = drawable.intrinsicHeight,
+                p1 = pixels[0],
+                p2 = pixels[1],
+                p3 = pixels[2],
+                p4 = pixels[3],
+                realWidth = realWidth,
+                realHeight = realHeight,
+                homographyMatrix = matrix.toList(),
+                createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date())
+            )
+        )
+        calibrationLocked = true
+        mapView.setCalibrationCursorEnabled(false)
+        updateAddPointButtonUi()
+        Toast.makeText(requireContext(), "Calibration saved", Toast.LENGTH_SHORT).show()
     }
 
     fun updateGroundControlLabels() {

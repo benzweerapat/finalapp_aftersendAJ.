@@ -47,6 +47,15 @@ class IndoorPlotImageView @JvmOverloads constructor(
         strokeWidth = 3f
         color = Color.parseColor("#EF4444")
     }
+    private val flagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#F59E0B")
+    }
+    private val flagPolePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 3f
+        color = Color.parseColor("#FDE68A")
+    }
 
     private val pinHeadCenterYOffset = -40f
     private val pinStemTopYOffset = -34f
@@ -57,8 +66,10 @@ class IndoorPlotImageView @JvmOverloads constructor(
     private var lastX = 0f
     private var lastY = 0f
     private var plotEnabled = false
+    private var calibrationCursorEnabled = false
 
     private val points = mutableListOf<PlotPoint>()
+    private val calibrationFlags = mutableListOf<Pair<Double, Double>>()
 
     init {
         scaleType = ScaleType.MATRIX
@@ -85,6 +96,17 @@ class IndoorPlotImageView @JvmOverloads constructor(
 
     fun setPointsNormalized(newPoints: List<Pair<Double, Double>>) {
         setPlotPoints(newPoints.map { PlotPoint(it.first, it.second, Color.parseColor("#22D3EE")) })
+    }
+
+    fun setCalibrationFlagsNormalized(flags: List<Pair<Double, Double>>) {
+        calibrationFlags.clear()
+        calibrationFlags.addAll(flags)
+        invalidate()
+    }
+
+    fun setCalibrationCursorEnabled(enabled: Boolean) {
+        calibrationCursorEnabled = enabled
+        invalidate()
     }
 
     fun zoomIn() {
@@ -189,7 +211,17 @@ class IndoorPlotImageView @JvmOverloads constructor(
             canvas.drawCircle(mapped[0], mapped[1], 9f, pointStrokePaint)
         }
 
-        drawFixedCenterPin(canvas)
+        calibrationFlags.forEachIndexed { index, pt ->
+            val mapped = floatArrayOf((pt.first * d.intrinsicWidth).toFloat(), (pt.second * d.intrinsicHeight).toFloat())
+            imageMatrix.mapPoints(mapped)
+            drawFlag(canvas, mapped[0], mapped[1], index + 1)
+        }
+
+        if (calibrationCursorEnabled) {
+            drawFixedCenterFlag(canvas)
+        } else {
+            drawFixedCenterPin(canvas)
+        }
     }
 
     private fun drawGrid(canvas: Canvas) {
@@ -212,6 +244,27 @@ class IndoorPlotImageView @JvmOverloads constructor(
         canvas.drawLine(cx, cy + pinStemTopYOffset, cx, cy + pinStemBottomYOffset, pinLinePaint)
         canvas.drawCircle(cx, cy + pinHeadCenterYOffset, 10f, pinPaint)
         canvas.drawCircle(cx, cy + pinHeadCenterYOffset, 10f, pointStrokePaint)
+    }
+
+    private fun drawFixedCenterFlag(canvas: Canvas) {
+        val cx = width / 2f
+        val tipY = height / 2f + pinStemBottomYOffset
+        drawFlag(canvas, cx, tipY, null)
+    }
+
+    private fun drawFlag(canvas: Canvas, tipX: Float, tipY: Float, index: Int?) {
+        val poleTopY = tipY - 42f
+        canvas.drawLine(tipX, poleTopY, tipX, tipY, flagPolePaint)
+        val flag = android.graphics.Path().apply {
+            moveTo(tipX, poleTopY)
+            lineTo(tipX + 20f, poleTopY + 8f)
+            lineTo(tipX, poleTopY + 16f)
+            close()
+        }
+        canvas.drawPath(flag, flagPaint)
+        if (index != null) {
+            canvas.drawText(index.toString(), tipX + 10f, poleTopY - 8f, pointStrokePaint)
+        }
     }
 
     private fun mapViewToNormalized(x: Float, y: Float): Pair<Double, Double>? {
