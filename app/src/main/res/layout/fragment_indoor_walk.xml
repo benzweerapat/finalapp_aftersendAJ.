@@ -9,81 +9,6 @@
         android:layout_height="match_parent"
         android:background="#0B1220" />
 
-
-    <LinearLayout
-        android:layout_width="186dp"
-        android:layout_height="wrap_content"
-        android:layout_gravity="top|start"
-        android:layout_marginStart="10dp"
-        android:layout_marginTop="10dp"
-        android:background="#33000000"
-        android:orientation="vertical"
-        android:padding="6dp">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="POINT COLOR RANGE"
-            android:textColor="#E5E7EB"
-            android:textSize="9sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Wi-Fi RSSI"
-            android:textColor="#C7D2FE"
-            android:textSize="9sp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="6dp"
-            android:layout_marginTop="2dp"
-            android:orientation="horizontal">
-
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#9B59B6" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#FF6B6B" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#FFB27C" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#FFD66E" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#7CF3A1" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="≤-95  -95/-85  -85/-75  -75/-65  >-65"
-            android:textColor="#9CA3AF"
-            android:textSize="8sp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Cellular RSRP"
-            android:textColor="#FDE68A"
-            android:textSize="9sp" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="6dp"
-            android:layout_marginTop="2dp"
-            android:orientation="horizontal">
-
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#FF6B6B" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#FFB27C" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#FFD66E" />
-            <View android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="#7CF3A1" />
-        </LinearLayout>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="≤-100  -100/-95  -95/-85  >-85"
-            android:textColor="#9CA3AF"
-            android:textSize="8sp" />
-    </LinearLayout>
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -93,8 +18,8 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <Space
                 android:layout_width="0dp"
@@ -114,8 +39,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <Space
                 android:layout_width="0dp"

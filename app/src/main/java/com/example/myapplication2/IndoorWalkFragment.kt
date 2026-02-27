@@ -60,7 +60,28 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val gpsLat: String,
         val gpsLong: String,
         val gpsAltitude: String,
-        val pressure: String
+        val pressure: String,
+        val standard: String,
+        val speed: String,
+        val bearing: String,
+        val accuracy: String,
+        val baroRelAlt: String,
+        val baroFloor: String,
+        val gpsRelAlt: String,
+        val gpsFloor: String,
+        val simState: String,
+        val nrState: String,
+        val netOpCode: String,
+        val roaming: String,
+        val callState: String,
+        val mcc: String,
+        val mnc: String,
+        val mncMaster: String,
+        val longCid: String,
+        val nodeIdNid: String,
+        val cidBid: String,
+        val band: String,
+        val dataState: String
     )
 
     private data class FloorPlanNeighborRecord(
@@ -69,6 +90,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val lat: String,
         val long: String,
         val servingNetworkType: String,
+        val servingTech: String,
+        val servingArfcn: String,
+        val servingPci: String,
+        val servingCellId: String,
+        val connectedSsid: String,
         val neighborIndex: Int,
         val neighborType: String,
         val neighborId: String,
@@ -84,6 +110,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val neighborChannel: String,
         val neighborSecurity: String
     )
+
+    private data class Quad<A,B,C,D>(val a:A,val b:B,val c:C,val d:D)
 
     private val pointRecords = mutableListOf<FloorPlanPointRecord>()
     private val neighborRecords = mutableListOf<FloorPlanNeighborRecord>()
@@ -297,13 +325,34 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 gpsLat = snapshot.latitude,
                 gpsLong = snapshot.longitude,
                 gpsAltitude = snapshot.absAltitude,
-                pressure = snapshot.pressure
+                pressure = snapshot.pressure,
+                standard = snapshot.standard,
+                speed = snapshot.speed,
+                bearing = snapshot.bearing,
+                accuracy = snapshot.accuracy,
+                baroRelAlt = snapshot.baroRelAlt,
+                baroFloor = snapshot.baroFloor,
+                gpsRelAlt = snapshot.gpsRelAlt,
+                gpsFloor = snapshot.gpsFloor,
+                simState = snapshot.simState,
+                nrState = snapshot.nrState,
+                netOpCode = snapshot.netOpCode,
+                roaming = snapshot.roaming,
+                callState = snapshot.callState,
+                mcc = snapshot.mcc,
+                mnc = snapshot.mnc,
+                mncMaster = snapshot.mncMaster,
+                longCid = snapshot.longCid,
+                nodeIdNid = snapshot.nodeIdNid,
+                cidBid = snapshot.cidBid,
+                band = snapshot.band,
+                dataState = snapshot.dataState
             )
         )
 
         val neighbors = when (IndoorSessionManager.radioMode) {
-            IndoorSessionManager.RadioMode.WIFI -> collectWifiNeighbors(pointNo, ts, mapLat, mapLong)
-            IndoorSessionManager.RadioMode.CELLULAR -> collectCellularNeighbors(pointNo, ts, mapLat, mapLong)
+            IndoorSessionManager.RadioMode.WIFI -> collectWifiNeighbors(pointNo, ts, mapLat, mapLong, snapshot)
+            IndoorSessionManager.RadioMode.CELLULAR -> collectCellularNeighbors(pointNo, ts, mapLat, mapLong, snapshot)
         }
         neighborRecords.addAll(neighbors)
     }
@@ -333,8 +382,53 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val security: String = "-",
         val mac: String = "-",
         val signalQuality: String = "-",
-        val snr: String = "-"
+        val snr: String = "-",
+        val standard: String = "-",
+        val speed: String = "-",
+        val bearing: String = "-",
+        val accuracy: String = "-",
+        val baroRelAlt: String = "",
+        val baroFloor: String = "",
+        val gpsRelAlt: String = "",
+        val gpsFloor: String = "",
+        val simState: String = "",
+        val nrState: String = "",
+        val netOpCode: String = "",
+        val roaming: String = "",
+        val callState: String = "",
+        val mcc: String = "",
+        val mnc: String = "",
+        val mncMaster: String = "",
+        val longCid: String = "",
+        val nodeIdNid: String = "",
+        val cidBid: String = "",
+        val band: String = "",
+        val dataState: String = ""
     )
+
+    private fun computeRelativeHeights(location: android.location.Location?): Quad<String, String, String, String> {
+        val main = activity as? MainActivity
+        val pressure = main?.currentFilteredPressure ?: 0f
+        val refPressure = main?.referencePressure ?: -1f
+        val floorHeight = main?.floorHeightMeters ?: 3.5f
+        val startFloor = main?.startFloor ?: 1
+        var baroRelAlt = ""
+        var baroFloor = ""
+        if (refPressure > 0f && pressure > 0f) {
+            val h = 44330 * (1 - Math.pow((pressure / refPressure).toDouble(), 1 / 5.255))
+            baroRelAlt = String.format(Locale.US, "%.2f", h)
+            baroFloor = (startFloor + (h / floorHeight).toInt()).toString()
+        }
+        var gpsRelAlt = ""
+        var gpsFloor = ""
+        val refGps = main?.referenceGpsAltitude
+        if (location != null && refGps != null && location.hasAltitude()) {
+            val rel = location.altitude - refGps
+            gpsRelAlt = String.format(Locale.US, "%.2f", rel)
+            gpsFloor = (startFloor + (rel / floorHeight).toInt()).toString()
+        }
+        return Quad(baroRelAlt, baroFloor, gpsRelAlt, gpsFloor)
+    }
 
     private fun getWifiSnapshot(): SignalSnapshot {
         return try {
@@ -344,6 +438,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             val channel = if (freq != "-") ((freq.toIntOrNull()?.minus(2407))?.div(5))?.toString() ?: "-" else "-"
             val quality = info?.rssi?.let { ((it + 100).coerceIn(0, 100)).toString() + "%" } ?: "-"
             val location = (activity as? MainActivity)?.latestLocation
+            val heights = computeRelativeHeights(location)
+            val speed = location?.speed?.toString() ?: ""
+            val bearing = location?.bearing?.toString() ?: ""
+            val accuracy = location?.accuracy?.toString() ?: ""
             SignalSnapshot(
                 networkType = "WIFI",
                 cellIdBssid = info?.bssid ?: "-",
@@ -357,11 +455,19 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 freq = freq,
                 channel = channel,
                 bw = "-",
-                linkSpeed = "${info?.linkSpeed ?: 0} Mbps",
+                linkSpeed = "${info?.linkSpeed ?: 0}",
                 security = "-",
                 mac = info?.bssid ?: "-",
                 signalQuality = quality,
-                snr = "N/A"
+                snr = "N/A",
+                standard = "",
+                speed = speed,
+                bearing = bearing,
+                accuracy = accuracy,
+                baroRelAlt = heights.a,
+                baroFloor = heights.b,
+                gpsRelAlt = heights.c,
+                gpsFloor = heights.d
             )
         } catch (_: Exception) {
             SignalSnapshot("WIFI", "-", -999, 0)
@@ -371,10 +477,14 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     private fun getCellularSnapshot(): SignalSnapshot {
         return try {
             val tm = requireContext().getSystemService(android.content.Context.TELEPHONY_SERVICE) as TelephonyManager
+            val location = (activity as? MainActivity)?.latestLocation
+            val heights = computeRelativeHeights(location)
+            val netOpCode = tm.networkOperator ?: ""
+            val mcc = netOpCode.take(3)
+            val mnc = netOpCode.drop(3)
             val cellInfos = tm.allCellInfo.orEmpty()
             val lte = cellInfos.filterIsInstance<CellInfoLte>().firstOrNull()
             if (lte != null) {
-                val location = (activity as? MainActivity)?.latestLocation
                 return SignalSnapshot(
                     networkType = "LTE",
                     cellIdBssid = "PCI:${lte.cellIdentity.pci},CI:${lte.cellIdentity.ci}",
@@ -389,7 +499,27 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     latitude = location?.latitude?.toString() ?: "-",
                     longitude = location?.longitude?.toString() ?: "-",
                     absAltitude = location?.altitude?.toString() ?: "-",
-                    pressure = (activity as? MainActivity)?.currentFilteredPressure?.toString() ?: "-"
+                    pressure = (activity as? MainActivity)?.currentFilteredPressure?.toString() ?: "-",
+                    speed = location?.speed?.toString() ?: "",
+                    bearing = location?.bearing?.toString() ?: "",
+                    accuracy = location?.accuracy?.toString() ?: "",
+                    baroRelAlt = heights.a,
+                    baroFloor = heights.b,
+                    gpsRelAlt = heights.c,
+                    gpsFloor = heights.d,
+                    simState = if (tm.simState == TelephonyManager.SIM_STATE_READY) "READY" else tm.simState.toString(),
+                    nrState = "",
+                    netOpCode = netOpCode,
+                    roaming = tm.isNetworkRoaming.toString(),
+                    callState = tm.callState.toString(),
+                    mcc = mcc,
+                    mnc = mnc,
+                    mncMaster = mnc,
+                    longCid = lte.cellIdentity.ci.toString(),
+                    nodeIdNid = "",
+                    cidBid = "",
+                    band = lteBandFromEarfcn(lte.cellIdentity.earfcn.toString()),
+                    dataState = tm.dataState.toString()
                 )
             }
             val nr = cellInfos.filterIsInstance<CellInfoNr>().firstOrNull()
@@ -407,7 +537,31 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     operatorName = tm.networkOperatorName ?: "-",
                     arfcn = (nrarfcn ?: -1).takeIf { it >= 0 }?.toString() ?: "-",
                     freqBw = "NR",
-                    pci = (pci ?: -1).takeIf { it >= 0 }?.toString() ?: "-"
+                    pci = (pci ?: -1).takeIf { it >= 0 }?.toString() ?: "-",
+                    latitude = location?.latitude?.toString() ?: "-",
+                    longitude = location?.longitude?.toString() ?: "-",
+                    absAltitude = location?.altitude?.toString() ?: "-",
+                    pressure = (activity as? MainActivity)?.currentFilteredPressure?.toString() ?: "-",
+                    speed = location?.speed?.toString() ?: "",
+                    bearing = location?.bearing?.toString() ?: "",
+                    accuracy = location?.accuracy?.toString() ?: "",
+                    baroRelAlt = heights.a,
+                    baroFloor = heights.b,
+                    gpsRelAlt = heights.c,
+                    gpsFloor = heights.d,
+                    simState = if (tm.simState == TelephonyManager.SIM_STATE_READY) "READY" else tm.simState.toString(),
+                    nrState = "CONNECTED",
+                    netOpCode = netOpCode,
+                    roaming = tm.isNetworkRoaming.toString(),
+                    callState = tm.callState.toString(),
+                    mcc = mcc,
+                    mnc = mnc,
+                    mncMaster = mnc,
+                    longCid = (nci ?: "").toString(),
+                    nodeIdNid = "",
+                    cidBid = "",
+                    band = nrBandFromArfcn((nrarfcn ?: -1).toString()),
+                    dataState = tm.dataState.toString()
                 )
             } else {
                 SignalSnapshot("CELL", "-", -999, -999)
@@ -417,7 +571,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
     }
 
-    private fun collectWifiNeighbors(pointNo: Int, timestamp: String, lat: String, long: String): List<FloorPlanNeighborRecord> {
+    private fun collectWifiNeighbors(pointNo: Int, timestamp: String, lat: String, long: String, snapshot: SignalSnapshot): List<FloorPlanNeighborRecord> {
         return try {
             val wm = requireContext().applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
             val scan = wm.scanResults.orEmpty()
@@ -429,6 +583,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     lat = lat,
                     long = long,
                     servingNetworkType = "WIFI",
+                    servingTech = snapshot.networkType,
+                    servingArfcn = snapshot.arfcn,
+                    servingPci = snapshot.pci,
+                    servingCellId = snapshot.cellIdBssid,
+                    connectedSsid = snapshot.ssid,
                     neighborIndex = idx + 1,
                     neighborType = "WIFI",
                     neighborId = ap.SSID ?: "-",
@@ -451,7 +610,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     }
 
     @android.annotation.SuppressLint("MissingPermission")
-    private fun collectCellularNeighbors(pointNo: Int, timestamp: String, lat: String, long: String): List<FloorPlanNeighborRecord> {
+    private fun collectCellularNeighbors(pointNo: Int, timestamp: String, lat: String, long: String, snapshot: SignalSnapshot): List<FloorPlanNeighborRecord> {
         if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return emptyList()
         }
@@ -473,6 +632,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                                 lat = lat,
                                 long = long,
                                 servingNetworkType = "CELLULAR",
+                                servingTech = snapshot.networkType,
+                                servingArfcn = snapshot.arfcn,
+                                servingPci = snapshot.pci,
+                                servingCellId = snapshot.longCid,
+                                connectedSsid = "",
                                 neighborIndex = idx++,
                                 neighborType = "LTE",
                                 neighborId = ci.cellIdentity.ci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "-",
@@ -500,6 +664,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                                 lat = lat,
                                 long = long,
                                 servingNetworkType = "CELLULAR",
+                                servingTech = snapshot.networkType,
+                                servingArfcn = snapshot.arfcn,
+                                servingPci = snapshot.pci,
+                                servingCellId = snapshot.longCid,
+                                connectedSsid = "",
                                 neighborIndex = idx++,
                                 neighborType = "NR",
                                 neighborId = invokeLongGetter(ci.cellIdentity, "getNci")?.toString() ?: "-",
@@ -718,15 +887,15 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 it.linkSpeed,
                 it.security,
                 it.mac,
-                "",
+                it.standard,
                 it.rsrpRssi,
                 it.signalQuality.replace("%", ""),
-                "",
+                it.speed,
                 it.pressure,
-                "",
-                "",
-                "",
-                ""
+                it.baroRelAlt,
+                it.baroFloor,
+                it.gpsRelAlt,
+                it.gpsFloor
             )
         }
     }
@@ -738,24 +907,24 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             listOf(
                 it.pointNo.toString(),
                 formatSysTime(it.timestamp),
-                "",
+                it.simState,
                 "IN_SERVICE",
-                if (isNr) "CONNECTED" else "",
+                it.nrState,
                 it.operatorName,
-                "",
-                "",
+                it.netOpCode,
+                it.roaming,
                 it.networkType,
-                "",
-                "CONNECTED",
+                it.callState,
+                it.dataState,
                 it.rsrpRssi,
                 it.networkType,
-                "",
-                "",
-                "",
+                it.mcc,
+                it.mnc,
+                it.mncMaster,
                 it.tac,
-                it.cellIdBssid,
-                "",
-                "",
+                it.longCid,
+                it.nodeIdNid,
+                it.cidBid,
                 it.pci,
                 if (isNr) it.tac else "",
                 if (isNr) it.cellIdBssid else "",
@@ -769,20 +938,20 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 if (isNr) it.sinr else "",
                 "",
                 if (it.gpsLat != "-" && it.gpsLong != "-") "1" else "0",
-                "",
+                it.accuracy,
                 it.lat,
                 it.long,
                 it.gpsAltitude,
-                "",
-                "",
-                "",
+                it.speed,
+                it.bearing,
+                it.band,
                 it.arfcn,
                 it.bw,
                 it.pressure,
-                "",
-                "",
-                "",
-                ""
+                it.baroRelAlt,
+                it.baroFloor,
+                it.gpsRelAlt,
+                it.gpsFloor
             )
         }
     }
@@ -793,7 +962,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 it.pointNo.toString(),
                 it.neighborIndex.toString(),
                 formatSysTime(it.timestamp),
-                "",
+                it.connectedSsid,
                 it.neighborSsid,
                 it.neighborBssid,
                 it.neighborRssi,
@@ -811,10 +980,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 it.pointNo.toString(),
                 it.neighborIndex.toString(),
                 formatSysTime(it.timestamp),
-                "",
-                "",
-                "",
-                "",
+                it.servingTech,
+                it.servingArfcn,
+                it.servingPci,
+                it.servingCellId,
                 it.neighborType,
                 it.neighborArfcn,
                 it.neighborFreqMhz,
@@ -865,8 +1034,12 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             IndoorSessionManager.RadioMode.CELLULAR -> floorPlanCellNeighborRows()
         }
 
-        val okServing = saveCsvToFloorPlan(servingFileName, servingHeader, servingRows)
-        val okNeighbor = saveCsvToFloorPlan(neighborFileName, neighborHeader, neighborRows)
+        val exportSubDir = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> "Wifi"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Cellular"
+        }
+        val okServing = saveCsvToFloorPlan(servingFileName, servingHeader, servingRows, exportSubDir)
+        val okNeighbor = saveCsvToFloorPlan(neighborFileName, neighborHeader, neighborRows, exportSubDir)
         val ok = okServing && okNeighbor
         if (showToast) {
             Toast.makeText(
@@ -877,13 +1050,13 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
     }
 
-    private fun saveCsvToFloorPlan(fileName: String, header: List<String>, rows: List<List<String>>): Boolean {
+    private fun saveCsvToFloorPlan(fileName: String, header: List<String>, rows: List<List<String>>, subDir: String): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/FloorPlan")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/FloorPlan/$subDir")
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val resolver = requireContext().contentResolver
@@ -901,7 +1074,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             } else {
                 val dir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "DriveTest/FloorPlan/FloorPlan"
+                    "DriveTest/FloorPlan/FloorPlan/$subDir"
                 )
                 if (!dir.exists()) dir.mkdirs()
                 val file = File(dir, fileName)
