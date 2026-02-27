@@ -2,6 +2,8 @@ package com.example.myapplication2
 
 import android.Manifest
 import android.content.ContentValues
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.ScanResult
@@ -1118,13 +1120,55 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
         val okServing = saveCsvToFloorPlan(servingFileName, servingHeader, servingRows, exportSubDir)
         val okNeighbor = saveCsvToFloorPlan(neighborFileName, neighborHeader, neighborRows, exportSubDir)
-        val ok = okServing && okNeighbor
+        val imageFileName = servingFileName.removeSuffix(".csv") + ".png"
+        val okImage = saveFloorPlanImage(imageFileName, exportSubDir)
+        val ok = okServing && okNeighbor && okImage
         if (showToast) {
             Toast.makeText(
                 requireContext(),
-                if (ok) "Saved: Download/DriveTest/FloorPlan/$exportSubDir/$servingFileName (+ neighbor)" else "Export failed",
+                if (ok) "Saved: Download/DriveTest/FloorPlan/$exportSubDir/$servingFileName (+ neighbor + image)" else "Export failed",
                 Toast.LENGTH_LONG
             ).show()
+        }
+    }
+
+    private fun saveFloorPlanImage(fileName: String, subDir: String): Boolean {
+        return try {
+            if (!::mapView.isInitialized || mapView.width <= 0 || mapView.height <= 0) return false
+
+            val bitmap = Bitmap.createBitmap(mapView.width, mapView.height, Bitmap.Config.ARGB_8888)
+            val canvas = Canvas(bitmap)
+            mapView.draw(canvas)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/$subDir")
+                    put(MediaStore.Images.Media.IS_PENDING, 1)
+                }
+                val resolver = requireContext().contentResolver
+                val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
+                resolver.openOutputStream(uri)?.use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+            } else {
+                val dir = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "DriveTest/FloorPlan/$subDir"
+                )
+                if (!dir.exists()) dir.mkdirs()
+                val file = File(dir, fileName)
+                file.outputStream().use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                }
+            }
+            true
+        } catch (_: Exception) {
+            false
         }
     }
 
