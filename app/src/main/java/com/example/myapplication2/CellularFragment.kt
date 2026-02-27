@@ -630,7 +630,9 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
                             val ss = ci.cellSignalStrength
 
                             nRow.add("LTE")
-                            nRow.add(id.earfcn.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            val nEarfcn = id.earfcn.takeIf { it != Int.MAX_VALUE }
+                            nRow.add(nEarfcn?.toString() ?: "")
+                            nRow.add(nEarfcn?.let { lteDlFreqMhz(it) }?.let { String.format(Locale.US, "%.1f", it) } ?: "")
                             nRow.add(id.pci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
                             nRow.add(ss.rsrp.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
                             nRow.add(ss.rsrq.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
@@ -645,12 +647,16 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
                             val ss = ci.cellSignalStrength as CellSignalStrengthNr
 
                             nRow.add("NR")
-                            nRow.add(id.nrarfcn.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
+                            val nNrarfcn = id.nrarfcn.takeIf { it != Int.MAX_VALUE }
+                            nRow.add(nNrarfcn?.toString() ?: "")
+                            nRow.add(nNrarfcn?.let { String.format(Locale.US, "%.1f", nrDlFreqMhz(it)) } ?: "")
                             nRow.add(id.pci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
                             nRow.add(ss.ssRsrp.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
                             nRow.add(ss.ssRsrq.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
                             nRow.add(ss.ssSinr.takeIf { it != Int.MAX_VALUE }?.toString() ?: "")
                         }
+
+                        else -> continue
                     }
 
                     nRow.add(loc?.latitude?.toString() ?: "")
@@ -725,10 +731,10 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
     }
 
     private fun colorForRsrp(rsrp: Int): Int = when {
-        rsrp >= -85  -> COL_GREEN
-        rsrp >= -100 -> COL_YELLOW
-        rsrp >= -110 -> Color.parseColor("#E67E22")
-        else         -> COL_RED
+        rsrp > -85 -> COL_GREEN
+        rsrp >= -95 -> COL_YELLOW
+        rsrp >= -100 -> Color.parseColor("#E67E22")
+        else -> COL_RED
     }
 
     private fun lteDlFreqMhz(earfcn: Int): Double? {

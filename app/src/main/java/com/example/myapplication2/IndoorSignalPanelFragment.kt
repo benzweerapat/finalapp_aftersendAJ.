@@ -56,7 +56,14 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     private var textSignalSub: TextView? = null
     private var textPointCount: TextView? = null
     private var btnToggle: Button? = null
+    private var btnAddPoint: Button? = null
+    private var btnUndo: Button? = null
+    private var btnClear: Button? = null
     private var detailsContainer: FrameLayout? = null
+
+    private var onAddPointClick: (() -> Unit)? = null
+    private var onUndoClick: (() -> Unit)? = null
+    private var onClearClick: (() -> Unit)? = null
 
     private var currentMode = IndoorSessionManager.RadioMode.CELLULAR
     private var expandedItemId: Long? = null
@@ -68,6 +75,9 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         textSignalSub = view.findViewById(R.id.textSignalSub)
         textPointCount = view.findViewById(R.id.textPointCount)
         btnToggle = view.findViewById(R.id.btnToggleDetails)
+        btnAddPoint = view.findViewById(R.id.btnAddPoint)
+        btnUndo = view.findViewById(R.id.btnUndo)
+        btnClear = view.findViewById(R.id.btnClear)
         detailsContainer = view.findViewById(R.id.detailsContainer)
         detailsContainer?.id = View.generateViewId()
 
@@ -77,6 +87,9 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         }
 
         btnToggle?.setOnClickListener { toggleInlineDetails() }
+        btnAddPoint?.setOnClickListener { onAddPointClick?.invoke() }
+        btnUndo?.setOnClickListener { onUndoClick?.invoke() }
+        btnClear?.setOnClickListener { onClearClick?.invoke() }
         refreshToggleUi()
     }
 
@@ -87,6 +100,28 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
 
     fun updatePointCount(count: Int) {
         textPointCount?.text = "Points: $count"
+    }
+
+
+    fun setOnAddPointClickListener(listener: (() -> Unit)?) {
+        onAddPointClick = listener
+    }
+
+    fun setOnUndoClickListener(listener: (() -> Unit)?) {
+        onUndoClick = listener
+    }
+
+    fun setOnClearClickListener(listener: (() -> Unit)?) {
+        onClearClick = listener
+    }
+
+    fun setAddPointStartRequiredHint(visible: Boolean) {
+        // hint now shown via MainActivity.startHintText for consistent position
+    }
+
+    fun setAddPointEnabled(enabled: Boolean) {
+        btnAddPoint?.isEnabled = enabled
+        btnAddPoint?.alpha = if (enabled) 1f else 0.75f
     }
 
     fun setMode(mode: IndoorSessionManager.RadioMode) {

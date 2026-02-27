@@ -53,10 +53,11 @@ class WifiNeighborAdapter : RecyclerView.Adapter<WifiNeighborAdapter.VH>() {
             tvRssi.text = "$rssi dBm"
 
             val bgColor = when {
-                rssi >= -60        -> "#7CF3A1" // เขียว (แรงมาก)
-                rssi in -70..-61   -> "#FFD66E" // เหลือง
-                rssi in -80..-71   -> "#FFB27C" // ส้ม
-                else               -> "#FF8A8A" // แดง
+                rssi > -65  -> "#7CF3A1"
+                rssi >= -75 -> "#FFD66E"
+                rssi >= -85 -> "#FFB27C"
+                rssi >= -95 -> "#FF6B6B"
+                else -> "#9B59B6"
             }
 
             try {

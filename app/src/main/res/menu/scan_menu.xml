@@ -2,11 +2,11 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
         android:id="@+id/menu_cellular"
-        android:title="Cellular (4G/5G)"
+        android:title="Cellular"
          />
 
     <item
         android:id="@+id/menu_wifi"
-        android:title="WiFi Scan"
+        android:title="Wifi"
         />
 </menu>

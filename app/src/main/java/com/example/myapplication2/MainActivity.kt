@@ -38,14 +38,15 @@ import android.os.Handler
 import android.os.Looper
 import android.telephony.CellInfoLte
 import android.telephony.CellInfoNr
-
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 
 
 class MainActivity : AppCompatActivity() {
 
     enum class DriveMode(val label: String, val folderName: String) {
-        OUTDOOR("GNSS", "GNSS"),
-        INDOOR("Floor plan", "FloorPlan")
+        GNSS("GNSS", "GNSS"),
+        FLOOR_PLAN("Floor plan", "FloorPlan")
     }
 
     enum class CurrentTech { WIFI, CELL }
@@ -76,7 +77,7 @@ class MainActivity : AppCompatActivity() {
     // ================== CELLULAR CSV ==================
     var isRecordingCsv = false
     var isGroundSet = false
-    private var currentDriveMode = DriveMode.OUTDOOR
+    private var currentDriveMode = DriveMode.GNSS
     private var currentTech = CurrentTech.CELL
     private var currentEnv = CurrentEnv.OUTDOOR
     private var indoorSurveyState = SurveyState.IDLE
@@ -84,6 +85,7 @@ class MainActivity : AppCompatActivity() {
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
     private var currentWifiSessionId: Int? = null
+    private var startHintBlinkAnimator: ObjectAnimator? = null
     // ================== CELLULAR SNAPSHOT SYSTEM ==================
 
     private var cellularReportCounter: Int = 1
@@ -158,7 +160,7 @@ class MainActivity : AppCompatActivity() {
     val wifiCsvHeader = listOf(
         "report","sys_time","lat","long","altitude",
         "ssid","freq","channel","bw","linkspeed",
-        "security","mac","standard","signalqual","speed",
+        "security","mac","standard","rssi","signalqual","speed",
         "baro_pressure","baro_rel_alt","baro_floor",
         "gps_rel_alt","gps_floor"
     )
@@ -166,7 +168,7 @@ class MainActivity : AppCompatActivity() {
     val neighborCsvHeader = listOf(
         "report", "neighbor_index","sys_time",
         "serving_tech", "serving_arfcn", "serving_pci", "serving_cell_id",
-        "neighbor_tech", "neighbor_arfcn", "neighbor_pci", "neighbor_rsrp",
+        "neighbor_tech", "neighbor_arfcn", "neighbor_freq_mhz", "neighbor_pci", "neighbor_rsrp",
         "neighbor_rsrq", "neighbor_sinr",
         "latitude", "longitude"
     )
@@ -546,19 +548,20 @@ class MainActivity : AppCompatActivity() {
         btn.text = currentDriveMode.label
 
         val colorRes =
-            if (currentDriveMode == DriveMode.OUTDOOR) android.R.color.holo_green_light
+            if (currentDriveMode == DriveMode.GNSS) android.R.color.holo_green_light
             else android.R.color.holo_orange_light
         val color = ContextCompat.getColor(this, colorRes)
 
         btn.setTextColor(color)
     }
 
-    private fun updateCurrentModeLabel(fragmentLabel: String) {
+    private fun updateCurrentModeLabel() {
+        val techLabel = if (currentTech == CurrentTech.WIFI) "Wifi" else "Cellular"
         findViewById<TextView>(R.id.currentModeText).text =
-            "Current: $fragmentLabel • ${currentDriveMode.label}"
+            "Current $techLabel ∙ ${currentDriveMode.label}"
     }
 
-    fun isIndoorDriveMode(): Boolean = currentDriveMode == DriveMode.INDOOR
+    fun isIndoorDriveMode(): Boolean = currentDriveMode == DriveMode.FLOOR_PLAN
 
     private fun renderCurrentScreen() {
         if (currentEnv == CurrentEnv.INDOOR) {
@@ -581,7 +584,8 @@ class MainActivity : AppCompatActivity() {
                 ?.setSurveyRunning(IndoorSessionManager.surveyRunning)
         }
 
-        updateCurrentModeLabel("${if (currentTech == CurrentTech.WIFI) "WiFi" else "Cellular"}${if (currentEnv == CurrentEnv.INDOOR) " (Floor plan)" else ""}")
+        findViewById<Button>(R.id.saveCsvButton)?.visibility = View.VISIBLE
+        updateCurrentModeLabel()
         updateUnifiedSurveyButtonUi()
     }
 
@@ -598,9 +602,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun applySurveyButtonState(button: Button, running: Boolean) {
         button.text = if (running) "Stop" else "Start"
-        val icon = if (running) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
-        button.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
-        button.compoundDrawablePadding = 8
+        button.setCompoundDrawablesWithIntrinsicBounds(0, 0, 0, 0)
+        button.compoundDrawablePadding = 0
     }
 
     // ================== BUTTONS ==================
@@ -610,10 +613,11 @@ class MainActivity : AppCompatActivity() {
         val btnDriveMode = findViewById<Button>(R.id.btnDriveMode)
         val btnSelectFloor: Button? =
             findViewById(R.id.btnSelectFloor)
+        btnSelectFloor?.visibility = View.GONE
         updateFloorButtonLabel()
         refreshFloorHeightButtonLabel()
         updateDriveModeButtonUi()
-        updateCurrentModeLabel("Cellular")
+        updateCurrentModeLabel()
         updateUnifiedSurveyButtonUi()
 
         btnDriveMode.setOnClickListener {
@@ -623,8 +627,8 @@ class MainActivity : AppCompatActivity() {
             }
 
             currentDriveMode =
-                if (currentDriveMode == DriveMode.OUTDOOR) DriveMode.INDOOR else DriveMode.OUTDOOR
-            currentEnv = if (currentDriveMode == DriveMode.INDOOR) CurrentEnv.INDOOR else CurrentEnv.OUTDOOR
+                if (currentDriveMode == DriveMode.GNSS) DriveMode.FLOOR_PLAN else DriveMode.GNSS
+            currentEnv = if (currentDriveMode == DriveMode.FLOOR_PLAN) CurrentEnv.INDOOR else CurrentEnv.OUTDOOR
 
             updateDriveModeButtonUi()
             renderCurrentScreen()
@@ -669,7 +673,7 @@ class MainActivity : AppCompatActivity() {
 
                 when (item.itemId) {
                     R.id.menu_cellular -> {
-                        if (currentDriveMode == DriveMode.INDOOR) {
+                        if (currentDriveMode == DriveMode.FLOOR_PLAN) {
                             currentTech = CurrentTech.CELL
                             (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
                                 ?.setRadioMode(IndoorSessionManager.RadioMode.CELLULAR)
@@ -690,7 +694,7 @@ class MainActivity : AppCompatActivity() {
                             return@setOnMenuItemClickListener true
                         }
 
-                        if (currentDriveMode == DriveMode.INDOOR) {
+                        if (currentDriveMode == DriveMode.FLOOR_PLAN) {
                             currentTech = CurrentTech.WIFI
                             (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
                                 ?.setRadioMode(IndoorSessionManager.RadioMode.WIFI)
@@ -759,16 +763,18 @@ class MainActivity : AppCompatActivity() {
 
 
                 is IndoorWalkFragment -> {
-                    if (indoorSurveyState == SurveyState.IDLE) {
+                    if (fragment.isSurveyRunning()) {
+                        fragment.stopSurvey()
+                        indoorSurveyState = SurveyState.IDLE
+                        IndoorSessionManager.surveyRunning = false
+                    } else {
                         calibrateAltitude(startFloor)
                         fragment.startSurvey()
                         indoorSurveyState = SurveyState.RUNNING
                         IndoorSessionManager.surveyRunning = true
-                    } else {
-                        fragment.stopSurvey()
-                        indoorSurveyState = SurveyState.IDLE
-                        IndoorSessionManager.surveyRunning = false
                     }
+                    scanBtn.text = if (fragment.isSurveyRunning()) "Stop" else "Start"
+                    scanBtn.visibility = View.VISIBLE
                     updateUnifiedSurveyButtonUi()
                 }
 
@@ -821,7 +827,7 @@ class MainActivity : AppCompatActivity() {
 
         // ❗ ID ต้องตรงกับปุ่มจริงใน layout
         findViewById<View>(R.id.btnCalibrate)?.visibility = v
-        findViewById<View>(R.id.btnReset)?.visibility = v
+        findViewById<View>(R.id.btnReset)?.visibility = View.GONE
     }
 
     override fun onRequestPermissionsResult(
@@ -867,6 +873,7 @@ class MainActivity : AppCompatActivity() {
         security: String?,
         mac: String?,
         standard: String?,
+        rssi: Int?,
         signalQual: Int?,
         speed: Float?
     ) {
@@ -918,6 +925,7 @@ class MainActivity : AppCompatActivity() {
             security ?: "",                             // security
             mac ?: "",                                  // mac
             standard ?: "",                             // standard
+            rssi?.toString() ?: "",                     // rssi
             signalQual?.toString() ?: "",               // signalqual
             speed?.toString() ?: "",                    // speed
 
@@ -984,16 +992,17 @@ class MainActivity : AppCompatActivity() {
         val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
-        val radioOff =
+        val airplaneOn = try {
             android.provider.Settings.Global.getInt(
                 contentResolver,
                 android.provider.Settings.Global.AIRPLANE_MODE_ON,
                 0
-            ) == 1 ||
-                    tm.serviceState?.state == ServiceState.STATE_POWER_OFF
+            ) == 1
+        } catch (_: Exception) { false }
 
-        val inService = tm.serviceState?.state == ServiceState.STATE_IN_SERVICE
-        val dataOk = tm.dataState == TelephonyManager.DATA_CONNECTED
+        val powerOff = try { tm.serviceState?.state == ServiceState.STATE_POWER_OFF } catch (_: Exception) { true }
+        val inService = try { tm.serviceState?.state == ServiceState.STATE_IN_SERVICE } catch (_: Exception) { false }
+        val dataOk = try { tm.dataState == TelephonyManager.DATA_CONNECTED } catch (_: Exception) { false }
 
         val gpsOk = try {
             lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
@@ -1001,7 +1010,7 @@ class MainActivity : AppCompatActivity() {
             false
         }
 
-        return !radioOff && inService && dataOk && gpsOk
+        return !airplaneOn && !powerOff && inService && dataOk && gpsOk
     }
     @SuppressLint("MissingPermission")
     fun isReadyToStartWifi(): Boolean {
@@ -1022,20 +1031,48 @@ class MainActivity : AppCompatActivity() {
         return wifiOn && gpsOn
     }
 
+
+    private fun stopStartHintBlink() {
+        startHintBlinkAnimator?.cancel()
+        startHintBlinkAnimator = null
+        findViewById<TextView>(R.id.startHintText)?.alpha = 1f
+    }
+
+    private fun startStartHintBlink() {
+        val hint = findViewById<TextView>(R.id.startHintText) ?: return
+        if (startHintBlinkAnimator != null) return
+        startHintBlinkAnimator = ObjectAnimator.ofFloat(hint, "alpha", 1f, 0.3f).apply {
+            duration = 650
+            repeatMode = ValueAnimator.REVERSE
+            repeatCount = ValueAnimator.INFINITE
+            start()
+        }
+    }
+
+    fun showStartHint(message: String) {
+        val hint = findViewById<TextView>(R.id.startHintText) ?: return
+        hint.text = message
+        hint.visibility = View.VISIBLE
+        startStartHintBlink()
+    }
+
+    fun clearStartHint() {
+        stopStartHintBlink()
+        findViewById<TextView>(R.id.startHintText)?.visibility = View.GONE
+    }
+
     private fun updateStartButtonState() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
-        val hint = findViewById<TextView>(R.id.startHintText)
 
         // ถ้ากำลังอัด → START ต้องกดได้ และไม่ต้องมีข้อความเตือน
         if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
             scanBtn.isEnabled = true
             scanBtn.alpha = 1f
-            hint.visibility = View.GONE
+            clearStartHint()
             return
         }
 
-        val fragment =
-            supportFragmentManager.findFragmentById(R.id.fragment_container)
+        val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
 
         when (fragment) {
 
@@ -1043,45 +1080,85 @@ class MainActivity : AppCompatActivity() {
                 val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
                 val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
-                val gpsOn = try {
-                    lm.isProviderEnabled(LocationManager.GPS_PROVIDER)
+                val gpsOn = try { lm.isProviderEnabled(LocationManager.GPS_PROVIDER) } catch (_: Exception) { false }
+                val inService = try { tm.serviceState?.state == ServiceState.STATE_IN_SERVICE } catch (_: Exception) { false }
+                val airplaneOn = try {
+                    android.provider.Settings.Global.getInt(contentResolver, android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) == 1
                 } catch (_: Exception) { false }
-
-                val inService =
-                    tm.serviceState?.state == ServiceState.STATE_IN_SERVICE
 
                 when {
                     !gpsOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please turn on GPS"
-                        hint.visibility = View.VISIBLE
+                        showStartHint("Please turn on GPS")
                     }
-
-                    !inService -> {
+                    airplaneOn || !inService -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Cellular service not ready"
-                        hint.visibility = View.VISIBLE
+                        showStartHint("Cellular service not ready")
                     }
-
                     else -> {
                         scanBtn.isEnabled = true
                         scanBtn.alpha = 1f
-                        hint.visibility = View.GONE
+                        clearStartHint()
                     }
                 }
             }
 
+            is IndoorWalkFragment -> {
+                val hasImportedFloorPlan = IndoorSessionManager.importedFloorPlanUri != null
+                var canStart = hasImportedFloorPlan
+
+                if (!hasImportedFloorPlan) {
+                    showStartHint("Please browse Floor plan image first")
+                } else if (currentTech == CurrentTech.CELL) {
+                    val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                    val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                    val gpsOn = try { lm.isProviderEnabled(LocationManager.GPS_PROVIDER) } catch (_: Exception) { false }
+                    val inService = try { tm.serviceState?.state == ServiceState.STATE_IN_SERVICE } catch (_: Exception) { false }
+                    val dataOk = try { tm.dataState == TelephonyManager.DATA_CONNECTED } catch (_: Exception) { false }
+                    val airplaneOn = try {
+                        android.provider.Settings.Global.getInt(contentResolver, android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) == 1
+                    } catch (_: Exception) { false }
+                    canStart = gpsOn && inService && dataOk && !airplaneOn
+                    when {
+                        !gpsOn -> showStartHint("Please turn on GPS")
+                        airplaneOn || !inService -> showStartHint("Cellular service not ready")
+                        !dataOk -> showStartHint("Cellular data not connected")
+                        else -> showStartHint("Please press START to begin Floor plan survey")
+                    }
+                } else {
+                    val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                    val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                    val wifiOn = wifiManager.isWifiEnabled
+                    val gpsOn = try {
+                        lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
+                            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                    } catch (_: Exception) { false }
+                    val info = wifiManager.connectionInfo
+                    val isConnected = info != null && info.networkId != -1
+                    canStart = wifiOn && gpsOn && isConnected
+                    when {
+                        !wifiOn -> showStartHint("Please turn on Wi-Fi")
+                        !gpsOn -> showStartHint("Please turn on GPS")
+                        !isConnected -> showStartHint("Please connect to Wi-Fi")
+                        else -> showStartHint("Please press START to begin Floor plan survey")
+                    }
+                }
+
+                scanBtn.isEnabled = canStart
+                scanBtn.alpha = if (canStart) 1f else 0.4f
+                fragment.setStartPrerequisitesReady(canStart)
+            }
+
             is WifiFragment -> {
-                val wifiManager =
-                    applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
                 val lm = getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
                 val wifiOn = wifiManager.isWifiEnabled
                 val gpsOn = try {
                     lm.isProviderEnabled(LocationManager.GPS_PROVIDER) ||
-                            lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+                        lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
                 } catch (_: Exception) { false }
                 val info = wifiManager.connectionInfo
                 val isConnected = info != null && info.networkId != -1
@@ -1090,28 +1167,22 @@ class MainActivity : AppCompatActivity() {
                     !wifiOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please turn on Wi-Fi"
-                        hint.visibility = View.VISIBLE
+                        showStartHint("Please turn on Wi-Fi")
                     }
-
                     !gpsOn -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please turn on GPS"
-                        hint.visibility = View.VISIBLE
+                        showStartHint("Please turn on GPS")
                     }
                     !isConnected -> {
                         scanBtn.isEnabled = false
                         scanBtn.alpha = 0.4f
-                        hint.text = "Please connect to Wi-Fi"
-                        hint.visibility = View.VISIBLE
+                        showStartHint("Please connect to Wi-Fi")
                     }
-
-
                     else -> {
                         scanBtn.isEnabled = true
                         scanBtn.alpha = 1f
-                        hint.visibility = View.GONE
+                        clearStartHint()
                     }
                 }
             }
@@ -1119,7 +1190,7 @@ class MainActivity : AppCompatActivity() {
             else -> {
                 scanBtn.isEnabled = false
                 scanBtn.alpha = 0.4f
-                hint.visibility = View.GONE
+                clearStartHint()
             }
         }
     }
@@ -1337,9 +1408,13 @@ class MainActivity : AppCompatActivity() {
     @SuppressLint("MissingPermission")
     fun getLteCaCount(): Int {
         val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-        return tm.allCellInfo
-            ?.count { it is android.telephony.CellInfoLte && it.isRegistered }
-            ?: 0
+        return try {
+            tm.allCellInfo
+                ?.count { it is android.telephony.CellInfoLte && it.isRegistered }
+                ?: 0
+        } catch (_: Exception) {
+            0
+        }
     }
 
 

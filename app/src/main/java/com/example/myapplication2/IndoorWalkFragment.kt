@@ -1,6 +1,8 @@
 package com.example.myapplication2
 
+import android.Manifest
 import android.content.ContentValues
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -16,6 +18,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import java.io.File
 import java.text.SimpleDateFormat
@@ -25,7 +28,65 @@ import java.util.Locale
 class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     private lateinit var mapView: IndoorPlotImageView
+    private var startPrerequisitesReady: Boolean = true
     private val uiHandler = Handler(Looper.getMainLooper())
+
+    private data class FloorPlanPointRecord(
+        val timestamp: String,
+        val floorLabel: String,
+        val pointNo: Int,
+        val lat: String,
+        val long: String,
+        val mapX: String,
+        val mapY: String,
+        val networkType: String,
+        val operatorName: String,
+        val cellIdBssid: String,
+        val pci: String,
+        val tac: String,
+        val arfcn: String,
+        val freq: String,
+        val bw: String,
+        val rsrpRssi: String,
+        val rsrqSinr: String,
+        val sinr: String,
+        val ssid: String,
+        val mac: String,
+        val channel: String,
+        val linkSpeed: String,
+        val security: String,
+        val signalQuality: String,
+        val snr: String,
+        val gpsLat: String,
+        val gpsLong: String,
+        val gpsAltitude: String,
+        val pressure: String
+    )
+
+    private data class FloorPlanNeighborRecord(
+        val pointNo: Int,
+        val timestamp: String,
+        val lat: String,
+        val long: String,
+        val servingNetworkType: String,
+        val neighborIndex: Int,
+        val neighborType: String,
+        val neighborId: String,
+        val neighborPci: String,
+        val neighborArfcn: String,
+        val neighborFreqMhz: String,
+        val neighborRsrp: String,
+        val neighborRsrq: String,
+        val neighborSinr: String,
+        val neighborSsid: String,
+        val neighborBssid: String,
+        val neighborRssi: String,
+        val neighborChannel: String,
+        val neighborSecurity: String
+    )
+
+    private val pointRecords = mutableListOf<FloorPlanPointRecord>()
+    private val neighborRecords = mutableListOf<FloorPlanNeighborRecord>()
 
     private val pickFloorPlanLauncher =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -51,7 +112,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     fun startSurvey() {
         IndoorSessionManager.surveyRunning = true
         setSurveyRunning(true)
-        Toast.makeText(requireContext(), "Indoor survey started", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Floor plan survey started", Toast.LENGTH_SHORT).show()
     }
 
     fun stopSurvey() {
@@ -60,17 +121,26 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         exportCsv(showToast = true)
         IndoorSessionManager.points.clear()
         IndoorSessionManager.plottedPointsNormalized.clear()
-        mapView.setPointsNormalized(emptyList())
+        pointRecords.clear()
+        neighborRecords.clear()
+        refreshMapPoints()
         updatePointCount()
-        Toast.makeText(requireContext(), "Indoor survey stopped", Toast.LENGTH_SHORT).show()
+        Toast.makeText(requireContext(), "Floor plan survey stopped", Toast.LENGTH_SHORT).show()
     }
 
     fun isSurveyRunning(): Boolean = IndoorSessionManager.surveyRunning
 
     fun setSurveyRunning(running: Boolean) {
         IndoorSessionManager.surveyRunning = running
+        updateAddPointButtonUi()
     }
 
+
+
+    fun setStartPrerequisitesReady(ready: Boolean) {
+        startPrerequisitesReady = ready
+        updateAddPointButtonUi()
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -84,39 +154,61 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 .commitNow()
         }
 
-        mapView.setImageFromUri(IndoorSessionManager.importedFloorPlanUri ?: IndoorSessionManager.config?.imageUri)
-        mapView.setPlotEnabled(true)
-        mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
-
-        mapView.onPointAdded = { nx, ny ->
-            if (!IndoorSessionManager.surveyRunning) {
-                Toast.makeText(requireContext(), "Survey ended", Toast.LENGTH_SHORT).show()
-            } else {
-                recordPoint(nx.toFloat(), ny.toFloat())
-                mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnAddPointClickListener {
+                if (!IndoorSessionManager.surveyRunning) {
+                    (activity as? MainActivity)?.showStartHint("Please press START first")
+                    return@setOnAddPointClickListener
+                }
+                val pinTip = mapView.getPinTipNormalized()
+                if (pinTip == null) {
+                    Toast.makeText(requireContext(), "Move map so pin is over floor plan", Toast.LENGTH_SHORT).show()
+                    return@setOnAddPointClickListener
+                }
+                // Use the bottom tip of the fixed pin, not the visual center, for saved point coordinates
+                recordPoint(pinTip.first.toFloat(), pinTip.second.toFloat())
+                refreshMapPoints()
                 updatePointCount()
             }
-        }
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnUndoClickListener {
+                if (pointRecords.isEmpty()) {
+                    Toast.makeText(requireContext(), "No point to undo", Toast.LENGTH_SHORT).show()
+                    return@setOnUndoClickListener
+                }
+                try {
+                    val removedPoint = IndoorSessionManager.points.removeAt(IndoorSessionManager.points.lastIndex)
+                    pointRecords.removeAll { it.pointNo == removedPoint.pointNo }
+                    neighborRecords.removeAll { it.pointNo == removedPoint.pointNo }
+                    refreshMapPoints()
+                    updatePointCount()
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Undo failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnClearClickListener {
+                IndoorSessionManager.points.clear()
+                IndoorSessionManager.plottedPointsNormalized.clear()
+                pointRecords.clear()
+                neighborRecords.clear()
+                refreshMapPoints()
+                updatePointCount()
+                Toast.makeText(requireContext(), "Cleared all points", Toast.LENGTH_SHORT).show()
+            }
+
+        mapView.setImageFromUri(IndoorSessionManager.importedFloorPlanUri ?: IndoorSessionManager.config?.imageUri)
+        mapView.setPlotEnabled(true)
+        refreshMapPoints()
+
+        view.findViewById<Button>(R.id.btnResetView).setOnClickListener { mapView.resetViewFitScreen() }
 
         view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
             pickFloorPlanLauncher.launch("image/*")
         }
 
-        view.findViewById<Button>(R.id.btnUndo).setOnClickListener {
-            if (IndoorSessionManager.points.isEmpty()) {
-                Toast.makeText(requireContext(), "No point to undo", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            try {
-                IndoorSessionManager.points.removeAt(IndoorSessionManager.points.lastIndex)
-                mapView.setPointsNormalized(IndoorSessionManager.points.map { Pair(it.mapX.toDouble(), it.mapY.toDouble()) })
-                updatePointCount()
-            } catch (e: Exception) {
-                Toast.makeText(requireContext(), "Undo failed: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-
         updatePointCount()
+        updateAddPointButtonUi()
         refreshSignalPanel()
     }
 
@@ -128,6 +220,12 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     override fun onPause() {
         super.onPause()
         uiHandler.removeCallbacks(signalTicker)
+    }
+
+    private fun updateAddPointButtonUi() {
+        val enabled = startPrerequisitesReady
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setAddPointEnabled(enabled)
     }
 
     private fun ensureDefaultConfigIfMissing() {
@@ -166,6 +264,48 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 rsrqSinr = snapshot.rsrqSinr
             )
         )
+
+        val mapLat = String.format(Locale.US, "%.6f", nx)
+        val mapLong = String.format(Locale.US, "%.6f", ny)
+        pointRecords.add(
+            FloorPlanPointRecord(
+                timestamp = ts,
+                floorLabel = floor,
+                pointNo = pointNo,
+                lat = mapLat,
+                long = mapLong,
+                mapX = mapLat,
+                mapY = mapLong,
+                networkType = snapshot.networkType,
+                operatorName = snapshot.operatorName,
+                cellIdBssid = snapshot.cellIdBssid,
+                pci = snapshot.pci,
+                tac = snapshot.tac,
+                arfcn = snapshot.arfcn,
+                freq = snapshot.freq,
+                bw = snapshot.bw,
+                rsrpRssi = snapshot.rsrpRssi.toString(),
+                rsrqSinr = snapshot.rsrqSinr.toString(),
+                sinr = snapshot.sinr,
+                ssid = snapshot.ssid,
+                mac = snapshot.mac,
+                channel = snapshot.channel,
+                linkSpeed = snapshot.linkSpeed,
+                security = snapshot.security,
+                signalQuality = snapshot.signalQuality,
+                snr = snapshot.snr,
+                gpsLat = snapshot.latitude,
+                gpsLong = snapshot.longitude,
+                gpsAltitude = snapshot.absAltitude,
+                pressure = snapshot.pressure
+            )
+        )
+
+        val neighbors = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> collectWifiNeighbors(pointNo, ts, mapLat, mapLong)
+            IndoorSessionManager.RadioMode.CELLULAR -> collectCellularNeighbors(pointNo, ts, mapLat, mapLong)
+        }
+        neighborRecords.addAll(neighbors)
     }
 
     private data class SignalSnapshot(
@@ -276,6 +416,126 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             SignalSnapshot("CELL", "-", -999, -999)
         }
     }
+
+    private fun collectWifiNeighbors(pointNo: Int, timestamp: String, lat: String, long: String): List<FloorPlanNeighborRecord> {
+        return try {
+            val wm = requireContext().applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as WifiManager
+            val scan = wm.scanResults.orEmpty()
+            scan.mapIndexed { idx, ap ->
+                val channel = if (ap.frequency > 0) ((ap.frequency - 2407) / 5).toString() else "-"
+                FloorPlanNeighborRecord(
+                    pointNo = pointNo,
+                    timestamp = timestamp,
+                    lat = lat,
+                    long = long,
+                    servingNetworkType = "WIFI",
+                    neighborIndex = idx + 1,
+                    neighborType = "WIFI",
+                    neighborId = ap.SSID ?: "-",
+                    neighborPci = "-",
+                    neighborArfcn = "-",
+                    neighborFreqMhz = ap.frequency.toString(),
+                    neighborRsrp = "-",
+                    neighborRsrq = "-",
+                    neighborSinr = "-",
+                    neighborSsid = ap.SSID ?: "-",
+                    neighborBssid = ap.BSSID ?: "-",
+                    neighborRssi = ap.level.toString(),
+                    neighborChannel = channel,
+                    neighborSecurity = ap.capabilities ?: "-"
+                )
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private fun collectCellularNeighbors(pointNo: Int, timestamp: String, lat: String, long: String): List<FloorPlanNeighborRecord> {
+        if (ActivityCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return emptyList()
+        }
+        return try {
+            val tm = requireContext().getSystemService(android.content.Context.TELEPHONY_SERVICE) as TelephonyManager
+            val allInfo = tm.allCellInfo.orEmpty()
+            val out = mutableListOf<FloorPlanNeighborRecord>()
+            var idx = 1
+            for (ci in allInfo) {
+                if (ci.isRegistered) continue
+                when (ci) {
+                    is CellInfoLte -> {
+                        val earfcn = ci.cellIdentity.earfcn.takeIf { it != Int.MAX_VALUE }
+                        val freq = earfcn?.let { lteDlFreqMhz(it) }?.let { String.format(Locale.US, "%.1f", it) } ?: "-"
+                        out.add(
+                            FloorPlanNeighborRecord(
+                                pointNo = pointNo,
+                                timestamp = timestamp,
+                                lat = lat,
+                                long = long,
+                                servingNetworkType = "CELLULAR",
+                                neighborIndex = idx++,
+                                neighborType = "LTE",
+                                neighborId = ci.cellIdentity.ci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "-",
+                                neighborPci = ci.cellIdentity.pci.takeIf { it != Int.MAX_VALUE }?.toString() ?: "-",
+                                neighborArfcn = earfcn?.toString() ?: "-",
+                                neighborFreqMhz = freq,
+                                neighborRsrp = ci.cellSignalStrength.rsrp.takeIf { it != Int.MAX_VALUE }?.toString() ?: "-",
+                                neighborRsrq = ci.cellSignalStrength.rsrq.takeIf { it != Int.MAX_VALUE }?.toString() ?: "-",
+                                neighborSinr = ci.cellSignalStrength.rssnr.takeIf { it != Int.MAX_VALUE }?.toString() ?: "-",
+                                neighborSsid = "-",
+                                neighborBssid = "-",
+                                neighborRssi = "-",
+                                neighborChannel = "-",
+                                neighborSecurity = "-"
+                            )
+                        )
+                    }
+                    is CellInfoNr -> {
+                        val nrarfcn = invokeIntGetter(ci.cellIdentity, "getNrarfcn")
+                        val freq = nrarfcn?.let { String.format(Locale.US, "%.1f", nrDlFreqMhz(it)) } ?: "-"
+                        out.add(
+                            FloorPlanNeighborRecord(
+                                pointNo = pointNo,
+                                timestamp = timestamp,
+                                lat = lat,
+                                long = long,
+                                servingNetworkType = "CELLULAR",
+                                neighborIndex = idx++,
+                                neighborType = "NR",
+                                neighborId = invokeLongGetter(ci.cellIdentity, "getNci")?.toString() ?: "-",
+                                neighborPci = invokeIntGetter(ci.cellIdentity, "getPci")?.toString() ?: "-",
+                                neighborArfcn = nrarfcn?.toString() ?: "-",
+                                neighborFreqMhz = freq,
+                                neighborRsrp = invokeIntGetter(ci.cellSignalStrength, "getSsRsrp")?.toString() ?: "-",
+                                neighborRsrq = invokeIntGetter(ci.cellSignalStrength, "getSsRsrq")?.toString() ?: "-",
+                                neighborSinr = invokeIntGetter(ci.cellSignalStrength, "getSsSinr")?.toString() ?: "-",
+                                neighborSsid = "-",
+                                neighborBssid = "-",
+                                neighborRssi = "-",
+                                neighborChannel = "-",
+                                neighborSecurity = "-"
+                            )
+                        )
+                    }
+                }
+            }
+            out
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun lteDlFreqMhz(earfcn: Int): Double? {
+        return when (earfcn) {
+            in 0..599 -> 2110.0 + 0.1 * earfcn
+            in 1200..1949 -> 1805.0 + 0.1 * (earfcn - 1200)
+            in 2750..3449 -> 2620.0 + 0.1 * (earfcn - 2750)
+            in 3450..3799 -> 925.0 + 0.1 * (earfcn - 3450)
+            else -> null
+        }
+    }
+
+    private fun nrDlFreqMhz(nrarfcn: Int): Double = nrarfcn * 0.005
 
     private fun invokeIntGetter(target: Any?, methodName: String): Int? {
         if (target == null) return null
@@ -396,60 +656,234 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
     }
 
+
+    private fun refreshMapPoints() {
+        mapView.setPlotPoints(
+            IndoorSessionManager.points.map {
+                IndoorPlotImageView.PlotPoint(
+                    nx = it.mapX.toDouble(),
+                    ny = it.mapY.toDouble(),
+                    color = signalColorForPoint(it)
+                )
+            }
+        )
+    }
+
+    private fun signalColorForPoint(point: IndoorTestPoint): Int {
+        return if (point.networkType.equals("WIFI", ignoreCase = true)) {
+            when {
+                point.rsrpRssi > -65 -> android.graphics.Color.parseColor("#7CF3A1")
+                point.rsrpRssi >= -75 -> android.graphics.Color.parseColor("#FFD66E")
+                point.rsrpRssi >= -85 -> android.graphics.Color.parseColor("#FFB27C")
+                point.rsrpRssi >= -95 -> android.graphics.Color.parseColor("#FF6B6B")
+                else -> android.graphics.Color.parseColor("#9B59B6")
+            }
+        } else {
+            when {
+                point.rsrpRssi > -85 -> android.graphics.Color.parseColor("#7CF3A1")
+                point.rsrpRssi >= -95 -> android.graphics.Color.parseColor("#FFD66E")
+                point.rsrpRssi >= -100 -> android.graphics.Color.parseColor("#FFB27C")
+                else -> android.graphics.Color.parseColor("#FF6B6B")
+            }
+        }
+    }
+
     private fun updatePointCount() {
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.updatePointCount(IndoorSessionManager.points.size)
     }
 
-    private val indoorCsvHeader = listOf(
-        "timestamp", "floor_label", "point_no", "map_x", "map_y",
-        "network_type", "cellid_bssid", "rsrp_rssi", "rsrq_sinr"
-    )
+    private fun formatSysTime(pointTimestamp: String): String {
+        return try {
+            val inFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
+            val outFmt = SimpleDateFormat("yyyyMMddHHmmss", Locale.US)
+            outFmt.format(inFmt.parse(pointTimestamp) ?: Date())
+        } catch (_: Exception) {
+            SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date())
+        }
+    }
+
+    private fun floorPlanWifiServingRows(): List<List<String>> {
+        return pointRecords.map {
+            listOf(
+                it.pointNo.toString(),
+                formatSysTime(it.timestamp),
+                it.lat,
+                it.long,
+                it.gpsAltitude,
+                it.ssid,
+                it.freq,
+                it.channel,
+                it.bw,
+                it.linkSpeed,
+                it.security,
+                it.mac,
+                "",
+                it.rsrpRssi,
+                it.signalQuality.replace("%", ""),
+                "",
+                it.pressure,
+                it.relHeight,
+                it.floor,
+                "",
+                ""
+            )
+        }
+    }
+
+    private fun floorPlanCellServingRows(): List<List<String>> {
+        return pointRecords.map {
+            val isNr = it.networkType.equals("NR", ignoreCase = true)
+            val isLte = it.networkType.equals("LTE", ignoreCase = true)
+            listOf(
+                it.pointNo.toString(),
+                formatSysTime(it.timestamp),
+                "",
+                "IN_SERVICE",
+                if (isNr) "CONNECTED" else "",
+                it.operatorName,
+                "",
+                "",
+                it.networkType,
+                "",
+                "CONNECTED",
+                it.rsrpRssi,
+                it.networkType,
+                "",
+                "",
+                "",
+                it.tac,
+                it.cellIdBssid,
+                "",
+                "",
+                it.pci,
+                if (isNr) it.tac else "",
+                if (isNr) it.cellIdBssid else "",
+                if (isNr) it.pci else "",
+                if (isNr) it.arfcn else "",
+                if (isLte) it.rsrpRssi else "",
+                if (isLte) it.rsrqSinr else "",
+                if (isLte) it.sinr else "",
+                if (isNr) it.rsrpRssi else "",
+                if (isNr) it.rsrqSinr else "",
+                if (isNr) it.sinr else "",
+                "",
+                if (it.gpsLat != "-" && it.gpsLong != "-") "1" else "0",
+                "",
+                it.lat,
+                it.long,
+                it.gpsAltitude,
+                "",
+                "",
+                "",
+                it.arfcn,
+                it.bw,
+                it.pressure,
+                it.relHeight,
+                it.floor,
+                "",
+                ""
+            )
+        }
+    }
+
+    private fun floorPlanWifiNeighborRows(): List<List<String>> {
+        return neighborRecords.map {
+            listOf(
+                it.pointNo.toString(),
+                it.neighborIndex.toString(),
+                formatSysTime(it.timestamp),
+                "",
+                it.neighborSsid,
+                it.neighborBssid,
+                it.neighborRssi,
+                it.neighborFreqMhz,
+                it.neighborSecurity,
+                it.lat,
+                it.long
+            )
+        }
+    }
+
+    private fun floorPlanCellNeighborRows(): List<List<String>> {
+        return neighborRecords.map {
+            listOf(
+                it.pointNo.toString(),
+                it.neighborIndex.toString(),
+                formatSysTime(it.timestamp),
+                "",
+                "",
+                "",
+                "",
+                it.neighborType,
+                it.neighborArfcn,
+                it.neighborFreqMhz,
+                it.neighborPci,
+                it.neighborRsrp,
+                it.neighborRsrq,
+                it.neighborSinr,
+                it.lat,
+                it.long
+            )
+        }
+    }
 
     private fun exportCsv(showToast: Boolean) {
-        val config = IndoorSessionManager.config ?: return
-        if (IndoorSessionManager.points.isEmpty()) {
+        if (pointRecords.isEmpty()) {
             if (showToast) Toast.makeText(requireContext(), "No data to export", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // outdoor-like naming/session strategy
-        val mainActivity = activity as? MainActivity
-        val sessionId = mainActivity?.getNextSessionIdMaxPlusOne("Indoor") ?: 1
+        val mainActivity = activity as? MainActivity ?: return
+        val sessionId = mainActivity.getNextSessionIdMaxPlusOne("FloorPlan")
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val fileName = "Session_${sessionId}_INDOOR_SURV_${IndoorSessionManager.radioMode.name}_$timestamp.csv"
 
-        val rows = IndoorSessionManager.points.map {
-            listOf(
-                it.timestamp,
-                it.floorLabel,
-                it.pointNo.toString(),
-                "%.6f".format(it.mapX),
-                "%.6f".format(it.mapY),
-                it.networkType,
-                it.cellIdBssid,
-                it.rsrpRssi.toString(),
-                it.rsrqSinr.toString()
-            )
+        val servingFileName = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_WIFI_SERV_FLOORPLAN_$timestamp.csv"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_CELL_SERV_FLOORPLAN_$timestamp.csv"
+        }
+        val neighborFileName = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_WIFI_NEI_FLOORPLAN_$timestamp.csv"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_CELL_NEI_FLOORPLAN_$timestamp.csv"
         }
 
-        val ok = saveCsvToIndoor(fileName, indoorCsvHeader, rows)
+        val servingHeader = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> mainActivity.wifiCsvHeader
+            IndoorSessionManager.RadioMode.CELLULAR -> mainActivity.csvHeader
+        }
+        val servingRows = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> floorPlanWifiServingRows()
+            IndoorSessionManager.RadioMode.CELLULAR -> floorPlanCellServingRows()
+        }
+
+        val neighborHeader = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> mainActivity.wifiNeighborHeader
+            IndoorSessionManager.RadioMode.CELLULAR -> mainActivity.neighborCsvHeader
+        }
+        val neighborRows = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> floorPlanWifiNeighborRows()
+            IndoorSessionManager.RadioMode.CELLULAR -> floorPlanCellNeighborRows()
+        }
+
+        val okServing = saveCsvToFloorPlan(servingFileName, servingHeader, servingRows)
+        val okNeighbor = saveCsvToFloorPlan(neighborFileName, neighborHeader, neighborRows)
+        val ok = okServing && okNeighbor
         if (showToast) {
             Toast.makeText(
                 requireContext(),
-                if (ok) "Saved: Download/DriveTest/Indoor/Indoor/$fileName" else "Export failed",
+                if (ok) "Saved: Download/DriveTest/FloorPlan/FloorPlan/$servingFileName (+ neighbor)" else "Export failed",
                 Toast.LENGTH_LONG
             ).show()
         }
     }
 
-    private fun saveCsvToIndoor(fileName: String, header: List<String>, rows: List<List<String>>): Boolean {
+    private fun saveCsvToFloorPlan(fileName: String, header: List<String>, rows: List<List<String>>): Boolean {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {
                     put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
                     put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/Indoor/Indoor")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/FloorPlan")
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
                 val resolver = requireContext().contentResolver
@@ -467,7 +901,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             } else {
                 val dir = File(
                     Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-                    "DriveTest/Indoor/Indoor"
+                    "DriveTest/FloorPlan/FloorPlan"
                 )
                 if (!dir.exists()) dir.mkdirs()
                 val file = File(dir, fileName)

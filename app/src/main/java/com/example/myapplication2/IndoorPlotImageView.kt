@@ -16,20 +16,47 @@ class IndoorPlotImageView @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : AppCompatImageView(context, attrs) {
 
-    private val drawPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#22D3EE")
+    data class PlotPoint(
+        val nx: Double,
+        val ny: Double,
+        val color: Int
+    )
+
+    private val pointPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
+        color = Color.parseColor("#22D3EE")
     }
+    private val pointStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+        color = Color.WHITE
+    }
+    private val gridPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        color = Color.parseColor("#35FFFFFF")
+        strokeWidth = 1f
+    }
+    private val pinPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.parseColor("#EF4444")
+    }
+    private val pinLinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 3f
+        color = Color.parseColor("#EF4444")
+    }
+
+    private val pinHeadCenterYOffset = -40f
+    private val pinStemTopYOffset = -34f
+    private val pinStemBottomYOffset = 20f
 
     private val matrixValues = FloatArray(9)
     private val scaleDetector = ScaleGestureDetector(context, ScaleListener())
     private var lastX = 0f
     private var lastY = 0f
-    private var dragging = false
     private var plotEnabled = false
 
-    private val points = mutableListOf<Pair<Double, Double>>()
-    var onPointAdded: ((Double, Double) -> Unit)? = null
+    private val points = mutableListOf<PlotPoint>()
 
     init {
         scaleType = ScaleType.MATRIX
@@ -48,10 +75,36 @@ class IndoorPlotImageView @JvmOverloads constructor(
         fitCenterLikeMatrix()
     }
 
-    fun setPointsNormalized(newPoints: List<Pair<Double, Double>>) {
+    fun setPlotPoints(newPoints: List<PlotPoint>) {
         points.clear()
         points.addAll(newPoints)
         invalidate()
+    }
+
+    fun setPointsNormalized(newPoints: List<Pair<Double, Double>>) {
+        setPlotPoints(newPoints.map { PlotPoint(it.first, it.second, Color.parseColor("#22D3EE")) })
+    }
+
+    fun zoomIn() {
+        zoomBy(1.2f)
+    }
+
+    fun zoomOut() {
+        zoomBy(0.83f)
+    }
+
+    fun resetViewFitScreen() {
+        fitCenterLikeMatrix()
+    }
+
+    fun getCenterNormalized(): Pair<Double, Double>? {
+        return mapViewToNormalized(width / 2f, height / 2f)
+    }
+
+    fun getPinTipNormalized(): Pair<Double, Double>? {
+        val cx = width / 2f
+        val pinTipY = height / 2f + pinStemBottomYOffset
+        return mapViewToNormalized(cx, pinTipY)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -67,30 +120,18 @@ class IndoorPlotImageView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 lastX = event.x
                 lastY = event.y
-                dragging = false
             }
             MotionEvent.ACTION_MOVE -> {
                 if (!scaleDetector.isInProgress) {
                     val dx = event.x - lastX
                     val dy = event.y - lastY
-                    if (kotlin.math.abs(dx) > 2 || kotlin.math.abs(dy) > 2) {
+                    if (kotlin.math.abs(dx) > 1 || kotlin.math.abs(dy) > 1) {
                         imageMatrix.postTranslate(dx, dy)
                         this.imageMatrix = imageMatrix
-                        dragging = true
                         invalidate()
                     }
                     lastX = event.x
                     lastY = event.y
-                }
-            }
-            MotionEvent.ACTION_UP -> {
-                if (!dragging && !scaleDetector.isInProgress) {
-                    val normalized = mapViewToNormalized(event.x, event.y)
-                    if (normalized != null) {
-                        points.add(normalized)
-                        onPointAdded?.invoke(normalized.first, normalized.second)
-                        invalidate()
-                    }
                 }
             }
         }
@@ -99,14 +140,43 @@ class IndoorPlotImageView @JvmOverloads constructor(
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        drawGrid(canvas)
+
         val d = drawable ?: return
         points.forEach {
-            val px = (it.first * d.intrinsicWidth).toFloat()
-            val py = (it.second * d.intrinsicHeight).toFloat()
+            val px = (it.nx * d.intrinsicWidth).toFloat()
+            val py = (it.ny * d.intrinsicHeight).toFloat()
             val mapped = floatArrayOf(px, py)
             imageMatrix.mapPoints(mapped)
-            canvas.drawCircle(mapped[0], mapped[1], 8f, drawPaint)
+            pointPaint.color = it.color
+            canvas.drawCircle(mapped[0], mapped[1], 9f, pointPaint)
+            canvas.drawCircle(mapped[0], mapped[1], 9f, pointStrokePaint)
         }
+
+        drawFixedCenterPin(canvas)
+    }
+
+    private fun drawGrid(canvas: Canvas) {
+        val stepPx = 48f
+        var x = 0f
+        while (x <= width) {
+            canvas.drawLine(x, 0f, x, height.toFloat(), gridPaint)
+            x += stepPx
+        }
+        var y = 0f
+        while (y <= height) {
+            canvas.drawLine(0f, y, width.toFloat(), y, gridPaint)
+            y += stepPx
+        }
+    }
+
+    private fun drawFixedCenterPin(canvas: Canvas) {
+        val cx = width / 2f
+        val cy = height / 2f
+        canvas.drawLine(cx, cy + pinStemTopYOffset, cx, cy + pinStemBottomYOffset, pinLinePaint)
+        canvas.drawCircle(cx, cy + pinHeadCenterYOffset, 10f, pinPaint)
+        canvas.drawCircle(cx, cy + pinHeadCenterYOffset, 10f, pointStrokePaint)
     }
 
     private fun mapViewToNormalized(x: Float, y: Float): Pair<Double, Double>? {
@@ -132,6 +202,17 @@ class IndoorPlotImageView @JvmOverloads constructor(
         m.postScale(scale, scale)
         m.postTranslate(dx, dy)
         imageMatrix = m
+        invalidate()
+    }
+
+    private fun zoomBy(scaleFactor: Float) {
+        imageMatrix.getValues(matrixValues)
+        val currentScale = matrixValues[Matrix.MSCALE_X]
+        val targetScale = (currentScale * scaleFactor).coerceIn(0.5f, 8f)
+        val relative = targetScale / currentScale
+        imageMatrix.postScale(relative, relative, width / 2f, height / 2f)
+        this.imageMatrix = imageMatrix
+        invalidate()
     }
 
     private inner class ScaleListener : ScaleGestureDetector.SimpleOnScaleGestureListener() {

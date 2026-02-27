@@ -128,10 +128,11 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
     private fun applyRssiBadgeStyle(rssi: Int?) {
         val color = when {
             rssi == null -> "#7A7A7A"
-            rssi >= -60 -> "#7CF3A1"
-            rssi in -70..-61 -> "#FFD66E"
-            rssi in -80..-71 -> "#FFB27C"
-            else -> "#FF8A8A"
+            rssi > -65 -> "#7CF3A1"
+            rssi >= -75 -> "#FFD66E"
+            rssi >= -85 -> "#FFB27C"
+            rssi >= -95 -> "#FF6B6B"
+            else -> "#9B59B6"
         }
 
         try {
@@ -630,6 +631,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
             security = wifiSecurity?.text?.toString(),
             mac = info.bssid,
             standard = wifiStandard?.text?.toString(),
+            rssi = rssi,
             signalQual = rssiToQuality(rssi),
             speed = mainActivity.latestLocation?.speed
         )

@@ -19,6 +19,7 @@ class WifiInlineDetailsFragment : Fragment(R.layout.fragment_wifi_inline_details
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        view.findViewById<View>(R.id.btnReset)?.visibility = View.GONE
         val data = arguments?.getSerializable(ARG_DATA) as? WifiInlineDetailData ?: WifiInlineDetailData()
 
         view.findViewById<TextView>(R.id.wifiSsid)?.text = data.ssid

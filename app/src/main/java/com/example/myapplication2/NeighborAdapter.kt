@@ -35,11 +35,11 @@ class NeighborAdapter : RecyclerView.Adapter<NeighborAdapter.VH>() {
 
         // heatmap สีตามค่า RSRP (ประมาณ)
         val bg = when {
-            it.rsrp == null            -> "#7A7A7A" // เทา
-            it.rsrp >= -85             -> "#7CF3A1" // เขียว
-            it.rsrp in -95..-86        -> "#FFD66E" // เหลือง
-            it.rsrp in -105..-96       -> "#FFB27C" // ส้ม
-            else                       -> "#FF8A8A" // แดง
+            it.rsrp == null      -> "#7A7A7A"
+            it.rsrp > -85        -> "#7CF3A1"
+            it.rsrp >= -95       -> "#FFD66E"
+            it.rsrp >= -100      -> "#FFB27C"
+            else                 -> "#FF6B6B"
         }
         try { holder.tvRsrp.setBackgroundColor(Color.parseColor(bg)) } catch (_: Exception) {}
     }

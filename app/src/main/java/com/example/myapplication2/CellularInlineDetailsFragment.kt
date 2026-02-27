@@ -19,6 +19,7 @@ class CellularInlineDetailsFragment : Fragment(R.layout.fragment_cellular_inline
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        view.findViewById<View>(R.id.btnReset)?.visibility = View.GONE
         val data = arguments?.getSerializable(ARG_DATA) as? CellularInlineDetailData ?: CellularInlineDetailData()
 
         view.findViewById<TextView>(R.id.techLabel)?.text = data.tech
