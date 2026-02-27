@@ -102,13 +102,36 @@
             android:textSize="11sp"
             android:visibility="gone" />
 
-        <!-- Row: toggle details -->
+        <!-- Row: floor/height + toggle details -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnFloorPlanSelectFloor"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:text="Floor --"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                android:minWidth="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp" />
+
+            <Button
+                android:id="@+id/btnFloorPlanEditHeight"
+                android:layout_width="wrap_content"
+                android:layout_height="32dp"
+                android:layout_marginStart="6dp"
+                android:text="Edit Height"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                android:minWidth="0dp"
+                android:paddingStart="10dp"
+                android:paddingEnd="10dp" />
 
             <Space
                 android:layout_width="0dp"
