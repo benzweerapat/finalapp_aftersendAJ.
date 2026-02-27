@@ -723,8 +723,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 it.signalQuality.replace("%", ""),
                 "",
                 it.pressure,
-                it.relHeight,
-                it.floor,
+                "",
+                "",
                 "",
                 ""
             )
@@ -779,8 +779,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 it.arfcn,
                 it.bw,
                 it.pressure,
-                it.relHeight,
-                it.floor,
+                "",
+                "",
                 "",
                 ""
             )
@@ -839,12 +839,12 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
 
         val servingFileName = when (IndoorSessionManager.radioMode) {
-            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_WIFI_SERV_FLOORPLAN_$timestamp.csv"
-            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_CELL_SERV_FLOORPLAN_$timestamp.csv"
+            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_FLOOR_PLAN_SURV_WIFI_$timestamp.csv"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_FLOOR_PLAN_SURV_CELLULAR_$timestamp.csv"
         }
         val neighborFileName = when (IndoorSessionManager.radioMode) {
-            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_WIFI_NEI_FLOORPLAN_$timestamp.csv"
-            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_CELL_NEI_FLOORPLAN_$timestamp.csv"
+            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_FLOOR_PLAN_NEI_WIFI_$timestamp.csv"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_FLOOR_PLAN_NEI_CELLULAR_$timestamp.csv"
         }
 
         val servingHeader = when (IndoorSessionManager.radioMode) {
