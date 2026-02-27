@@ -113,6 +113,33 @@ object IndoorCoordinateTransformer {
         return LAT_DEGREES_PER_METER / safeCos
     }
 
+
+    fun isPointInsideCalibrationQuad(
+        px: Double,
+        py: Double,
+        p1: PixelPoint,
+        p2: PixelPoint,
+        p3: PixelPoint,
+        p4: PixelPoint
+    ): Boolean {
+        val pts = listOf(p1, p2, p3, p4)
+        var sign = 0
+        for (i in pts.indices) {
+            val a = pts[i]
+            val b = pts[(i + 1) % pts.size]
+            val cross = (b.x - a.x) * (py - a.y) - (b.y - a.y) * (px - a.x)
+            val current = when {
+                cross > 1e-9 -> 1
+                cross < -1e-9 -> -1
+                else -> 0
+            }
+            if (current == 0) continue
+            if (sign == 0) sign = current
+            if (sign != current) return false
+        }
+        return true
+    }
+
     private fun solveLinearSystem(aIn: Array<DoubleArray>, bIn: DoubleArray): DoubleArray {
         val n = bIn.size
         val a = Array(n) { r -> aIn[r].clone() }

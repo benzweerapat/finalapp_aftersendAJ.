@@ -161,6 +161,11 @@ class IndoorPlotImageView @JvmOverloads constructor(
             c.drawCircle(px, py, 9f, pointPaint)
             c.drawCircle(px, py, 9f, pointStrokePaint)
         }
+        calibrationFlags.forEachIndexed { index, pt ->
+            val px = (pt.first * outW).toFloat()
+            val py = (pt.second * outH).toFloat()
+            drawFlag(c, px, py, index + 1)
+        }
         return result
     }
 

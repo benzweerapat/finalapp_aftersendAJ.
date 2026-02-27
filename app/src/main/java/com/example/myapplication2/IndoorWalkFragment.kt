@@ -216,6 +216,26 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     Toast.makeText(requireContext(), "Move map so pin is over floor plan", Toast.LENGTH_SHORT).show()
                     return@setOnAddPointClickListener
                 }
+
+                val calibration = IndoorSessionManager.config?.calibrationSession
+                val drawable = mapView.drawable
+                if (calibration != null && drawable != null) {
+                    val px = pinTip.first * drawable.intrinsicWidth
+                    val py = pinTip.second * drawable.intrinsicHeight
+                    val inside = IndoorCoordinateTransformer.isPointInsideCalibrationQuad(
+                        px = px,
+                        py = py,
+                        p1 = calibration.p1,
+                        p2 = calibration.p2,
+                        p3 = calibration.p3,
+                        p4 = calibration.p4
+                    )
+                    if (!inside) {
+                        Toast.makeText(requireContext(), "Point is outside calibration area; lat/long may be inaccurate", Toast.LENGTH_LONG).show()
+                        return@setOnAddPointClickListener
+                    }
+                }
+
                 // Use the bottom tip of the fixed pin, not the visual center, for saved point coordinates
                 recordPoint(pinTip.first.toFloat(), pinTip.second.toFloat())
                 refreshMapPoints()
