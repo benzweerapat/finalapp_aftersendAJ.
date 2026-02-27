@@ -13,28 +13,32 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import kotlin.math.atan2
-import kotlin.math.hypot
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
 
     private lateinit var imageView: ImageView
+    private lateinit var overlayView: FloorPlanOverlayView
     private lateinit var projectInput: EditText
     private lateinit var floorInput: EditText
+    private lateinit var originLatInput: EditText
+    private lateinit var originLongInput: EditText
     private lateinit var calibrationSummary: TextView
 
     private var selectedImageUri: Uri? = null
     private var calibrationPoints = mutableListOf<Pair<Double, Double>>()
-    private var calibratedScaleMetersPerPixel: Double? = null
-    private var axisAngleRad: Double? = null
+    private var calibrationSession: CalibrationSession? = null
+    private var draggingPointIndex: Int? = null
 
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         if (uri != null) {
             selectedImageUri = uri
             imageView.setImageURI(uri)
             calibrationPoints.clear()
-            calibratedScaleMetersPerPixel = null
-            axisAngleRad = null
+            calibrationSession = null
+            syncOverlay()
             updateSummary()
         }
     }
@@ -43,8 +47,11 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
         super.onViewCreated(view, savedInstanceState)
 
         imageView = view.findViewById(R.id.setupFloorImage)
+        overlayView = view.findViewById(R.id.setupFloorOverlay)
         projectInput = view.findViewById(R.id.inputProjectName)
         floorInput = view.findViewById(R.id.inputFloorName)
+        originLatInput = view.findViewById(R.id.inputOriginLat)
+        originLongInput = view.findViewById(R.id.inputOriginLong)
         calibrationSummary = view.findViewById(R.id.textCalibrationSummary)
 
         view.findViewById<Button>(R.id.btnPickFloorImage).setOnClickListener {
@@ -57,16 +64,13 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
                 return@setOnClickListener
             }
             calibrationPoints.clear()
-            calibratedScaleMetersPerPixel = null
-            axisAngleRad = null
-            updateSummary("แตะ 2 จุดเพื่อสร้าง calibration line")
+            calibrationSession = null
+            syncOverlay()
+            updateSummary("เลือกจุด 1-4: บนซ้าย → บนขวา → ล่างขวา → ล่างซ้าย")
         }
 
         imageView.setOnTouchListener { _, event ->
-            if (event.action == MotionEvent.ACTION_UP) {
-                val normalized = NormalizedCoordinateMapper.viewToNormalized(imageView, event.x, event.y) ?: return@setOnTouchListener true
-                onCalibrationTap(normalized)
-            }
+            handleTouch(event)
             true
         }
 
@@ -77,81 +81,123 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
         updateSummary()
     }
 
-    private fun onCalibrationTap(normalized: Pair<Double, Double>) {
+    private fun handleTouch(event: MotionEvent) {
         if (selectedImageUri == null) return
-        if (calibrationPoints.size >= 2) return
+        val normalized = NormalizedCoordinateMapper.viewToNormalized(imageView, event.x, event.y) ?: return
+        val drawable = imageView.drawable ?: return
+        val px = normalized.first * drawable.intrinsicWidth
+        val py = normalized.second * drawable.intrinsicHeight
 
-        calibrationPoints.add(normalized)
-        if (calibrationPoints.size == 2) {
-            requestDistanceAndSolve()
-        } else {
-            updateSummary("เลือกจุดที่ 2 เพื่อจบ calibration")
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                draggingPointIndex = overlayView.findNearestCalibrationPoint(event.x, event.y)
+                if (draggingPointIndex == null && calibrationPoints.size < 4) {
+                    calibrationPoints.add(Pair(px, py))
+                    syncOverlay()
+                    if (calibrationPoints.size == 4) {
+                        requestRectangleDimensionsAndSolve()
+                    } else {
+                        updateSummary("เลือกจุดลำดับถัดไป (${calibrationPoints.size + 1}/4)")
+                    }
+                }
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val dragIndex = draggingPointIndex ?: return
+                calibrationPoints[dragIndex] = Pair(px, py)
+                calibrationSession = null
+                syncOverlay()
+                updateSummary("กำลังปรับจุดที่ ${dragIndex + 1}")
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (draggingPointIndex != null && calibrationPoints.size == 4) {
+                    calibrationSession = null
+                    requestRectangleDimensionsAndSolve()
+                }
+                draggingPointIndex = null
+            }
         }
     }
 
-    private fun requestDistanceAndSolve() {
-        val dialogInput = EditText(requireContext()).apply {
-            hint = "Distance (meters)"
-            inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
+    private fun requestRectangleDimensionsAndSolve() {
+        val container = View.inflate(requireContext(), R.layout.dialog_calibration_dimensions, null)
+        val widthInput = container.findViewById<EditText>(R.id.inputRealWidth)
+        val heightInput = container.findViewById<EditText>(R.id.inputRealHeight)
+        widthInput.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+        heightInput.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
 
         AlertDialog.Builder(requireContext())
-            .setTitle("Calibration Distance")
-            .setMessage("กรอกระยะจริงระหว่าง 2 จุด (เมตร)")
-            .setView(dialogInput)
+            .setTitle("Calibration Dimensions")
+            .setMessage("กรอกความกว้าง/ยาวจริงของอาคาร (เมตร)")
+            .setView(container)
             .setPositiveButton("Apply") { _, _ ->
-                val meters = dialogInput.text.toString().toDoubleOrNull()
-                if (meters == null || meters <= 0.0) {
-                    toast("ระยะต้องมากกว่า 0")
+                val realWidth = widthInput.text.toString().toDoubleOrNull()
+                val realHeight = heightInput.text.toString().toDoubleOrNull()
+                if (realWidth == null || realHeight == null || realWidth <= 0.0 || realHeight <= 0.0) {
+                    toast("Width/Height ต้องมากกว่า 0")
                     return@setPositiveButton
                 }
-                solveScaleAndAngle(meters)
+                solveHomography(realWidth, realHeight)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun solveScaleAndAngle(realDistanceMeters: Double) {
+    private fun solveHomography(realWidth: Double, realHeight: Double) {
         val drawable = imageView.drawable ?: return
-        val p1 = calibrationPoints[0]
-        val p2 = calibrationPoints[1]
+        if (calibrationPoints.size != 4) return
 
-        val x1 = p1.first * drawable.intrinsicWidth
-        val y1 = p1.second * drawable.intrinsicHeight
-        val x2 = p2.first * drawable.intrinsicWidth
-        val y2 = p2.second * drawable.intrinsicHeight
-
-        val pixelDistance = hypot(x2 - x1, y2 - y1)
-        if (pixelDistance <= 0.0) {
-            toast("จุด calibration ซ้ำกัน")
+        val points = calibrationPoints.map { PixelPoint(it.first, it.second) }
+        val matrix = try {
+            IndoorCoordinateTransformer.solveHomography(points, realWidth, realHeight)
+        } catch (e: IllegalArgumentException) {
+            toast(e.message ?: "Calibration failed")
             return
         }
 
-        calibratedScaleMetersPerPixel = realDistanceMeters / pixelDistance
-        axisAngleRad = atan2(y2 - y1, x2 - x1)
-        updateSummary()
+        calibrationSession = CalibrationSession(
+            sessionId = "cal-${System.currentTimeMillis()}",
+            floorplanId = floorInput.text.toString().trim().ifBlank { "floorplan-default" },
+            imageWidth = drawable.intrinsicWidth,
+            imageHeight = drawable.intrinsicHeight,
+            p1 = points[0],
+            p2 = points[1],
+            p3 = points[2],
+            p4 = points[3],
+            realWidth = realWidth,
+            realHeight = realHeight,
+            homographyMatrix = matrix.toList(),
+            createdAt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US).format(Date())
+        )
+        updateSummary("Calibration complete")
     }
 
     private fun goToSurvey() {
         val project = projectInput.text.toString().trim().ifBlank { "IndoorProject" }
         val floor = floorInput.text.toString().trim().ifBlank { "Floor-1" }
         val uri = selectedImageUri
-        val scale = calibratedScaleMetersPerPixel
-        val angle = axisAngleRad
+        val session = calibrationSession
 
-        if (uri == null || scale == null || angle == null || calibrationPoints.size < 2) {
-            toast("ต้องเลือกภาพและทำ calibration line ก่อน")
+        if (uri == null || session == null) {
+            toast("ต้องเลือกภาพและทำ calibration 4 จุดก่อน")
             return
         }
+
+        val originLat = originLatInput.text.toString().trim().toDoubleOrNull()
+        val originLong = originLongInput.text.toString().trim().toDoubleOrNull()
 
         IndoorSessionManager.config = IndoorConfig(
             projectName = project,
             floorName = floor,
             imageUri = uri,
-            scaleMetersPerPixel = scale,
-            originNx = calibrationPoints[0].first,
-            originNy = calibrationPoints[0].second,
-            axisAngleRad = angle
+            scaleMetersPerPixel = 1.0,
+            originNx = 0.0,
+            originNy = 0.0,
+            axisAngleRad = 0.0,
+            calibrationSession = session,
+            originLatitude = originLat,
+            originLongitude = originLong
         )
         IndoorSessionManager.clearWalk()
 
@@ -160,15 +206,18 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             .commit()
     }
 
+    private fun syncOverlay() {
+        overlayView.setCalibrationPoints(calibrationPoints.map { Pair(it.first.toFloat(), it.second.toFloat()) })
+    }
+
     private fun updateSummary(extra: String? = null) {
-        val base = if (calibratedScaleMetersPerPixel == null || axisAngleRad == null) {
-            "Calibration: ยังไม่พร้อม"
-        } else {
-            "Calibration: scale=%.6f m/px, angle=%.2f°".format(
-                calibratedScaleMetersPerPixel,
-                Math.toDegrees(axisAngleRad!!)
+        val base = calibrationSession?.let {
+            val lonScale = IndoorCoordinateTransformer.longitudeDegreesPerMeter(originLatInput.text.toString().toDoubleOrNull() ?: 0.0)
+            "Calibration: ready, ${it.realWidth}m x ${it.realHeight}m\nH=[${it.homographyMatrix.joinToString(",") { v -> "%.4f".format(v) }}]\nlatScale=%.10f, lonScale=%.10f deg/m".format(
+                0.00000899,
+                lonScale
             )
-        }
+        } ?: "Calibration: ยังไม่พร้อม (ต้องครบ 4 จุด)"
         calibrationSummary.text = listOfNotNull(base, extra).joinToString("\n")
     }
 

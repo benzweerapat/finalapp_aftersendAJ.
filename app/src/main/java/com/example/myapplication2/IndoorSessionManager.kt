@@ -9,7 +9,30 @@ data class IndoorConfig(
     val scaleMetersPerPixel: Double,
     val originNx: Double,
     val originNy: Double,
-    val axisAngleRad: Double
+    val axisAngleRad: Double,
+    val calibrationSession: CalibrationSession? = null,
+    val originLatitude: Double? = null,
+    val originLongitude: Double? = null
+)
+
+data class PixelPoint(
+    val x: Double,
+    val y: Double
+)
+
+data class CalibrationSession(
+    val sessionId: String,
+    val floorplanId: String,
+    val imageWidth: Int,
+    val imageHeight: Int,
+    val p1: PixelPoint,
+    val p2: PixelPoint,
+    val p3: PixelPoint,
+    val p4: PixelPoint,
+    val realWidth: Double,
+    val realHeight: Double,
+    val homographyMatrix: List<Double>,
+    val createdAt: String
 )
 
 data class IndoorCheckpoint(

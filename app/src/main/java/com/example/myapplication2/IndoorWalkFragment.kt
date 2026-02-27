@@ -335,9 +335,32 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             IndoorSessionManager.RadioMode.WIFI -> getWifiSnapshot()
             IndoorSessionManager.RadioMode.CELLULAR -> getCellularSnapshot()
         }
-        val floor = IndoorSessionManager.config?.floorName ?: "Floor-1"
+        val config = IndoorSessionManager.config
+        val floor = config?.floorName ?: "Floor-1"
         val pointNo = IndoorSessionManager.points.size + 1
         val ts = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())
+
+        val drawable = mapView.drawable
+        val pixelX = nx.toDouble() * (drawable?.intrinsicWidth ?: 1)
+        val pixelY = ny.toDouble() * (drawable?.intrinsicHeight ?: 1)
+
+        val calibration = config?.calibrationSession
+        val realXY = if (calibration != null) {
+            IndoorCoordinateTransformer.pixelToReal(calibration.homographyMatrix.toDoubleArray(), pixelX, pixelY)
+        } else {
+            Pair(nx.toDouble(), ny.toDouble())
+        }
+
+        val latLong = if (config?.originLatitude != null && config.originLongitude != null) {
+            IndoorCoordinateTransformer.realToLatLong(
+                realX = realXY.first,
+                realY = realXY.second,
+                originLatitude = config.originLatitude,
+                originLongitude = config.originLongitude
+            )
+        } else {
+            null
+        }
 
         IndoorSessionManager.points.add(
             IndoorTestPoint(
@@ -353,8 +376,20 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             )
         )
 
-        val mapLat = String.format(Locale.US, "%.6f", nx)
-        val mapLong = String.format(Locale.US, "%.6f", ny)
+        IndoorSessionManager.checkpoints.add(
+            IndoorCheckpoint(
+                index = pointNo,
+                timestamp = ts,
+                normalizedX = nx.toDouble(),
+                normalizedY = ny.toDouble(),
+                localX = realXY.first,
+                localY = realXY.second,
+                source = "homography"
+            )
+        )
+
+        val mapLat = String.format(Locale.US, "%.6f", latLong?.first ?: realXY.second)
+        val mapLong = String.format(Locale.US, "%.6f", latLong?.second ?: realXY.first)
         pointRecords.add(
             FloorPlanPointRecord(
                 timestamp = ts,

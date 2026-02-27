@@ -8,6 +8,7 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import kotlin.math.hypot
 
 class FloorPlanOverlayView @JvmOverloads constructor(
     context: Context,
@@ -16,17 +17,19 @@ class FloorPlanOverlayView @JvmOverloads constructor(
 
     var calibrationPoints: List<Pair<Float, Float>> = emptyList()
         private set
-    var tapPoints: List<Pair<Float, Float>> = emptyList()
-        private set
 
-    private val calibrationPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+    private val markerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FF5252")
         style = Paint.Style.FILL
     }
-
-    private val tapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#22D3EE")
-        style = Paint.Style.FILL
+    private val markerTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        textSize = 30f
+    }
+    private val markerStrokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.BLACK
+        style = Paint.Style.STROKE
+        strokeWidth = 3f
     }
 
     fun setCalibrationPoints(points: List<Pair<Float, Float>>) {
@@ -34,23 +37,30 @@ class FloorPlanOverlayView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setTapPoints(points: List<Pair<Float, Float>>) {
-        tapPoints = points
-        invalidate()
+    fun findNearestCalibrationPoint(viewX: Float, viewY: Float, thresholdPx: Float = 36f): Int? {
+        val imageView = resolveSiblingImageView() ?: return null
+        var bestIndex = -1
+        var bestDistance = Float.MAX_VALUE
+        calibrationPoints.forEachIndexed { index, point ->
+            val mapped = mapBitmapToView(imageView, point.first, point.second)
+            val distance = hypot(mapped.first - viewX, mapped.second - viewY)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                bestIndex = index
+            }
+        }
+        return if (bestIndex >= 0 && bestDistance <= thresholdPx) bestIndex else null
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val imageView = resolveSiblingImageView() ?: return
 
-        calibrationPoints.forEach { point ->
+        calibrationPoints.forEachIndexed { index, point ->
             val mapped = mapBitmapToView(imageView, point.first, point.second)
-            canvas.drawCircle(mapped.first, mapped.second, 10f, calibrationPaint)
-        }
-
-        tapPoints.forEach { point ->
-            val mapped = mapBitmapToView(imageView, point.first, point.second)
-            canvas.drawCircle(mapped.first, mapped.second, 7f, tapPaint)
+            canvas.drawCircle(mapped.first, mapped.second, 13f, markerPaint)
+            canvas.drawCircle(mapped.first, mapped.second, 13f, markerStrokePaint)
+            canvas.drawText((index + 1).toString(), mapped.first + 16f, mapped.second - 16f, markerTextPaint)
         }
     }
 
