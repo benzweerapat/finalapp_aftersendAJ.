@@ -256,6 +256,16 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
         view.findViewById<Button>(R.id.btnResetView).setOnClickListener { mapView.resetViewFitScreen() }
 
+        view.findViewById<Button>(R.id.btnCalibration).setOnClickListener {
+            if (IndoorSessionManager.surveyRunning) {
+                Toast.makeText(requireContext(), "Stop recording before calibration", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            parentFragmentManager.beginTransaction()
+                .replace(R.id.fragment_container, IndoorSetupFragment())
+                .commit()
+        }
+
         view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
             pickFloorPlanLauncher.launch("image/*")
         }

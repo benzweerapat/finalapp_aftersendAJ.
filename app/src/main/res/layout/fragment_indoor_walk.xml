@@ -27,9 +27,18 @@
                 android:layout_weight="1" />
 
             <Button
+                android:id="@+id/btnCalibration"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="🎯 Calibration"
+                android:textAllCaps="false"
+                android:textSize="11sp" />
+
+            <Button
                 android:id="@+id/btnBrowseFloorPlan"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
+                android:layout_marginStart="6dp"
                 android:text="📁 Browse Floor Plan"
                 android:textAllCaps="false"
                 android:textSize="11sp" />
