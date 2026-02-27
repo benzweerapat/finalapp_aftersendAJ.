@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
@@ -412,15 +413,15 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val refPressure = main?.referencePressure ?: -1f
         val floorHeight = main?.floorHeightMeters ?: 3.5f
         val startFloor = main?.startFloor ?: 1
-        var baroRelAlt = ""
-        var baroFloor = ""
+        var baroRelAlt = "0.00"
+        var baroFloor = startFloor.toString()
         if (refPressure > 0f && pressure > 0f) {
             val h = 44330 * (1 - Math.pow((pressure / refPressure).toDouble(), 1 / 5.255))
             baroRelAlt = String.format(Locale.US, "%.2f", h)
             baroFloor = (startFloor + (h / floorHeight).toInt()).toString()
         }
-        var gpsRelAlt = ""
-        var gpsFloor = ""
+        var gpsRelAlt = "0.00"
+        var gpsFloor = startFloor.toString()
         val refGps = main?.referenceGpsAltitude
         if (location != null && refGps != null && location.hasAltitude()) {
             val rel = location.altitude - refGps
@@ -442,6 +443,25 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             val speed = location?.speed?.toString() ?: ""
             val bearing = location?.bearing?.toString() ?: ""
             val accuracy = location?.accuracy?.toString() ?: ""
+            val connected = wm.scanResults.orEmpty().firstOrNull { it.BSSID == info?.bssid }
+            val security = connected?.capabilities ?: "-"
+            val bw = when (connected?.channelWidth) {
+                ScanResult.CHANNEL_WIDTH_20MHZ -> "20 MHz"
+                ScanResult.CHANNEL_WIDTH_40MHZ -> "40 MHz"
+                ScanResult.CHANNEL_WIDTH_80MHZ -> "80 MHz"
+                ScanResult.CHANNEL_WIDTH_160MHZ -> "160 MHz"
+                ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ -> "80+80 MHz"
+                else -> "-"
+            }
+            val standard = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                when (connected?.wifiStandard) {
+                    ScanResult.WIFI_STANDARD_11N -> "802.11n"
+                    ScanResult.WIFI_STANDARD_11AC -> "802.11ac"
+                    ScanResult.WIFI_STANDARD_11AX -> "802.11ax"
+                    ScanResult.WIFI_STANDARD_11BE -> "802.11be"
+                    else -> "802.11a/b/g"
+                }
+            } else ""
             SignalSnapshot(
                 networkType = "WIFI",
                 cellIdBssid = info?.bssid ?: "-",
@@ -454,13 +474,13 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 ssid = info?.ssid ?: "-",
                 freq = freq,
                 channel = channel,
-                bw = "-",
+                bw = bw,
                 linkSpeed = "${info?.linkSpeed ?: 0}",
-                security = "-",
+                security = security,
                 mac = info?.bssid ?: "-",
                 signalQuality = quality,
                 snr = "N/A",
-                standard = "",
+                standard = standard,
                 speed = speed,
                 bearing = bearing,
                 accuracy = accuracy,
@@ -508,18 +528,18 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     gpsRelAlt = heights.c,
                     gpsFloor = heights.d,
                     simState = if (tm.simState == TelephonyManager.SIM_STATE_READY) "READY" else tm.simState.toString(),
-                    nrState = "",
+                    nrState = "UNKNOWN",
                     netOpCode = netOpCode,
-                    roaming = tm.isNetworkRoaming.toString(),
-                    callState = tm.callState.toString(),
+                    roaming = if (tm.isNetworkRoaming) "1" else "0",
+                    callState = "IDLE",
                     mcc = mcc,
                     mnc = mnc,
                     mncMaster = mnc,
                     longCid = lte.cellIdentity.ci.toString(),
-                    nodeIdNid = "",
-                    cidBid = "",
-                    band = lteBandFromEarfcn(lte.cellIdentity.earfcn.toString()),
-                    dataState = tm.dataState.toString()
+                    nodeIdNid = (lte.cellIdentity.ci / 256).toString(),
+                    cidBid = (lte.cellIdentity.ci % 256).toString(),
+                    band = lteDlFreqMhz(lte.cellIdentity.earfcn)?.let { String.format(Locale.US, "%.1f", it) } ?: "",
+                    dataState = "CONNECTED"
                 )
             }
             val nr = cellInfos.filterIsInstance<CellInfoNr>().firstOrNull()
@@ -552,16 +572,16 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     simState = if (tm.simState == TelephonyManager.SIM_STATE_READY) "READY" else tm.simState.toString(),
                     nrState = "CONNECTED",
                     netOpCode = netOpCode,
-                    roaming = tm.isNetworkRoaming.toString(),
-                    callState = tm.callState.toString(),
+                    roaming = if (tm.isNetworkRoaming) "1" else "0",
+                    callState = "IDLE",
                     mcc = mcc,
                     mnc = mnc,
                     mncMaster = mnc,
                     longCid = (nci ?: "").toString(),
-                    nodeIdNid = "",
-                    cidBid = "",
-                    band = nrBandFromArfcn((nrarfcn ?: -1).toString()),
-                    dataState = tm.dataState.toString()
+                    nodeIdNid = nci?.let { (it / 4096).toString() } ?: "",
+                    cidBid = nci?.let { (it % 4096).toString() } ?: "",
+                    band = nrarfcn?.let { String.format(Locale.US, "%.1f", nrDlFreqMhz(it)) } ?: "",
+                    dataState = "CONNECTED"
                 )
             } else {
                 SignalSnapshot("CELL", "-", -999, -999)
