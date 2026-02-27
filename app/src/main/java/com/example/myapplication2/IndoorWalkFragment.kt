@@ -1082,7 +1082,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
 
         val mainActivity = activity as? MainActivity ?: return
-        val sessionId = mainActivity.getNextSessionIdMaxPlusOne("FloorPlan")
+        val exportSubDir = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> "Wifi"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Cellular"
+        }
+        val sessionId = mainActivity.getNextSessionIdMaxPlusOne(exportSubDir)
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
 
         val servingFileName = when (IndoorSessionManager.radioMode) {
@@ -1112,17 +1116,13 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             IndoorSessionManager.RadioMode.CELLULAR -> floorPlanCellNeighborRows()
         }
 
-        val exportSubDir = when (IndoorSessionManager.radioMode) {
-            IndoorSessionManager.RadioMode.WIFI -> "Wifi"
-            IndoorSessionManager.RadioMode.CELLULAR -> "Cellular"
-        }
         val okServing = saveCsvToFloorPlan(servingFileName, servingHeader, servingRows, exportSubDir)
         val okNeighbor = saveCsvToFloorPlan(neighborFileName, neighborHeader, neighborRows, exportSubDir)
         val ok = okServing && okNeighbor
         if (showToast) {
             Toast.makeText(
                 requireContext(),
-                if (ok) "Saved: Download/DriveTest/FloorPlan/FloorPlan/$servingFileName (+ neighbor)" else "Export failed",
+                if (ok) "Saved: Download/DriveTest/FloorPlan/FloorPlan/$exportSubDir/$servingFileName (+ neighbor)" else "Export failed",
                 Toast.LENGTH_LONG
             ).show()
         }
