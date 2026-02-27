@@ -3,7 +3,6 @@ package com.example.myapplication2
 import android.Manifest
 import android.content.ContentValues
 import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.ScanResult
@@ -1134,11 +1133,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     private fun saveFloorPlanImage(fileName: String, subDir: String): Boolean {
         return try {
-            if (!::mapView.isInitialized || mapView.width <= 0 || mapView.height <= 0) return false
-
-            val bitmap = Bitmap.createBitmap(mapView.width, mapView.height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            mapView.draw(canvas)
+            if (!::mapView.isInitialized) return false
+            val bitmap = mapView.createExportBitmapWithPoints() ?: return false
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val values = ContentValues().apply {

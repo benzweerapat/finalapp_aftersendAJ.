@@ -1,10 +1,12 @@
 package com.example.myapplication2
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.util.AttributeSet
 import android.view.MotionEvent
@@ -105,6 +107,39 @@ class IndoorPlotImageView @JvmOverloads constructor(
         val cx = width / 2f
         val pinTipY = height / 2f + pinStemBottomYOffset
         return mapViewToNormalized(cx, pinTipY)
+    }
+
+    fun createExportBitmapWithPoints(): Bitmap? {
+        val d = drawable ?: return null
+        val outW = d.intrinsicWidth
+        val outH = d.intrinsicHeight
+        if (outW <= 0 || outH <= 0) return null
+
+        val baseBitmap = if (d is BitmapDrawable && d.bitmap != null) {
+            d.bitmap
+        } else {
+            Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888).also { bmp ->
+                val c = Canvas(bmp)
+                d.setBounds(0, 0, outW, outH)
+                d.draw(c)
+            }
+        }
+
+        val result = if (baseBitmap.width == outW && baseBitmap.height == outH) {
+            baseBitmap.copy(Bitmap.Config.ARGB_8888, true)
+        } else {
+            Bitmap.createScaledBitmap(baseBitmap, outW, outH, true).copy(Bitmap.Config.ARGB_8888, true)
+        }
+
+        val c = Canvas(result)
+        points.forEach {
+            val px = (it.nx * outW).toFloat()
+            val py = (it.ny * outH).toFloat()
+            pointPaint.color = it.color
+            c.drawCircle(px, py, 9f, pointPaint)
+            c.drawCircle(px, py, 9f, pointStrokePaint)
+        }
+        return result
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
