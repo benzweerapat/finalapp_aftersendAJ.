@@ -137,9 +137,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         override fun run() {
             if (!isAdded) return
             refreshSignalPanel()
-            if (IndoorSessionManager.surveyRunning && !calibrationLocked) {
-                updateCalibrationGuidanceHint()
-            }
             uiHandler.postDelayed(this, 1000)
         }
     }
@@ -160,7 +157,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         setSurveyRunning(true)
         showCalibrationRequiredDialog()
         (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
-        updateCalibrationGuidanceHint()
         Toast.makeText(requireContext(), "Survey started: press Calibration and pin 4 points", Toast.LENGTH_LONG).show()
     }
 
@@ -255,7 +251,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 if (!calibrationLocked && calibrationPointsNormalized.isNotEmpty()) {
                     calibrationPointsNormalized.removeLastOrNull()
                     mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
-                    updateCalibrationGuidanceHint()
                     Toast.makeText(requireContext(), "Undo calibration point", Toast.LENGTH_SHORT).show()
                     return@setOnUndoClickListener
                 }
@@ -357,18 +352,6 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
             .setPositiveButton("OK", null)
             .show()
     }
-
-    private fun updateCalibrationGuidanceHint() {
-        val hint = when (calibrationPointsNormalized.size) {
-            0 -> "Calibrated point 1: Drag map to TOP-LEFT corner"
-            1 -> "Calibrated point 2: Drag map to TOP-RIGHT corner"
-            2 -> "Calibrated point 3: Drag map to BOTTOM-RIGHT corner"
-            3 -> "Calibrated point 4: Drag map to BOTTOM-LEFT corner"
-            else -> "Calibration points complete. Enter real dimensions."
-        }
-        (activity as? MainActivity)?.showStartHint(hint)
-    }
-
     private fun updateAddPointButtonUi() {
         val calibrationReady = IndoorSessionManager.config?.calibrationSession != null
         val enabled = startPrerequisitesReady && calibrationReady && IndoorSessionManager.surveyRunning
@@ -395,7 +378,6 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
 
         if (calibrationPointsNormalized.size < 4) {
-            updateCalibrationGuidanceHint()
             Toast.makeText(requireContext(), "Calibration point ${calibrationPointsNormalized.size}/4 saved", Toast.LENGTH_SHORT).show()
             return
         }
@@ -420,7 +402,6 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
                     Toast.makeText(requireContext(), "Width/Height must be > 0", Toast.LENGTH_SHORT).show()
                     calibrationPointsNormalized.removeLastOrNull()
                     mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
-                    updateCalibrationGuidanceHint()
                     return@setPositiveButton
                 }
                 saveCalibrationSession(realWidth, realHeight)
@@ -428,12 +409,10 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
             .setNeutralButton("Undo last calibrated") { _, _ ->
                 calibrationPointsNormalized.removeLastOrNull()
                 mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
-                updateCalibrationGuidanceHint()
             }
             .setNegativeButton("Cancel") { _, _ ->
                 calibrationPointsNormalized.removeLastOrNull()
                 mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
-                updateCalibrationGuidanceHint()
             }
             .show()
     }

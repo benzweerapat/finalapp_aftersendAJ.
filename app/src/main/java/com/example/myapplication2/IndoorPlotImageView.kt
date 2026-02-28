@@ -61,6 +61,11 @@ class IndoorPlotImageView @JvmOverloads constructor(
         color = Color.WHITE
         textSize = 28f
     }
+    private val exportPointNumberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+        textSize = 16f
+    }
 
     private val pinHeadCenterYOffset = -40f
     private val pinStemTopYOffset = -34f
@@ -159,12 +164,13 @@ class IndoorPlotImageView @JvmOverloads constructor(
         }
 
         val c = Canvas(result)
-        points.forEach {
+        points.forEachIndexed { index, it ->
             val px = (it.nx * outW).toFloat()
             val py = (it.ny * outH).toFloat()
             pointPaint.color = it.color
             c.drawCircle(px, py, 9f, pointPaint)
             c.drawCircle(px, py, 9f, pointStrokePaint)
+            c.drawText("${index + 1}", px + 8f, py - 8f, exportPointNumberPaint)
         }
         calibrationFlags.forEachIndexed { index, pt ->
             val px = (pt.first * outW).toFloat()
@@ -180,7 +186,7 @@ class IndoorPlotImageView @JvmOverloads constructor(
             val stop = points.last()
             val ex = (stop.nx * outW).toFloat()
             val ey = (stop.ny * outH).toFloat()
-            c.drawText("STOP (Report ${points.size})", ex + 12f, ey - 12f, exportLabelPaint)
+            c.drawText("STOP (Latest Report ${points.size})", ex + 12f, ey - 12f, exportLabelPaint)
         }
         return result
     }
