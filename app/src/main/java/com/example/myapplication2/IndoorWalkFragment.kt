@@ -24,7 +24,10 @@ import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -153,6 +156,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         IndoorSessionManager.surveyRunning = true
         setSurveyRunning(true)
         showCalibrationRequiredDialog()
+        (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
+        updateCalibrationGuidanceHint()
         Toast.makeText(requireContext(), "Survey started: press Calibration and pin 4 points", Toast.LENGTH_LONG).show()
     }
 
@@ -171,6 +176,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         neighborRecords.clear()
         refreshMapPoints()
         updatePointCount()
+        (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
         Toast.makeText(requireContext(), "Floor plan survey stopped", Toast.LENGTH_SHORT).show()
     }
 
@@ -243,6 +249,14 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             }
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnUndoClickListener {
+                if (!calibrationLocked && calibrationPointsNormalized.isNotEmpty()) {
+                    calibrationPointsNormalized.removeLastOrNull()
+                    mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+                    updateCalibrationGuidanceHint()
+                    Toast.makeText(requireContext(), "Undo calibration point", Toast.LENGTH_SHORT).show()
+                    return@setOnUndoClickListener
+                }
+
                 if (pointRecords.isEmpty()) {
                     Toast.makeText(requireContext(), "No point to undo", Toast.LENGTH_SHORT).show()
                     return@setOnUndoClickListener
@@ -311,6 +325,9 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         updateGroundButtonsEnabledState()
         updateAddPointButtonUi()
         refreshSignalPanel()
+        if (!IndoorSessionManager.surveyRunning) {
+            (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
+        }
     }
 
     override fun onResume() {
@@ -326,10 +343,27 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     private fun showCalibrationRequiredDialog() {
         if (!isAdded) return
         AlertDialog.Builder(requireContext())
-            .setTitle("Calibration Required")
-            .setMessage("ก่อน Add Point ต้องกด Calibration และปักธงให้ครบ 4 จุด แล้วกรอกความยาว 2 ด้าน")
+            .setTitle("Calibrated Required")
+            .setMessage(
+                """step 1 : เลื่อนรูปภาพไปยังมุมตึกด้านซ้ายบนที่ต้องการให้ calibrated โดยให้ตรงกับ ธง
+step 2 : กดปุ่ม calibrated
+step 3 : ย้อนกลับไป step 1 แต่เลื่อนไปมุมขวาบน  ล่างขวา ล่างซ้าย
+**ซ้ายบน ขวาบน ขวาล่าง ซ้ายล่าง** เท่านั้น
+step 4 : กรอกความยาวจริง 2 ด้าน"""
+            )
             .setPositiveButton("OK", null)
             .show()
+    }
+
+    private fun updateCalibrationGuidanceHint() {
+        val hint = when (calibrationPointsNormalized.size) {
+            0 -> "Calibrated point 1: Drag map to TOP-LEFT corner"
+            1 -> "Calibrated point 2: Drag map to TOP-RIGHT corner"
+            2 -> "Calibrated point 3: Drag map to BOTTOM-RIGHT corner"
+            3 -> "Calibrated point 4: Drag map to BOTTOM-LEFT corner"
+            else -> "Calibration points complete. Enter real dimensions."
+        }
+        (activity as? MainActivity)?.showStartHint(hint)
     }
 
     private fun updateAddPointButtonUi() {
@@ -358,6 +392,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
 
         if (calibrationPointsNormalized.size < 4) {
+            updateCalibrationGuidanceHint()
             Toast.makeText(requireContext(), "Calibration point ${calibrationPointsNormalized.size}/4 saved", Toast.LENGTH_SHORT).show()
             return
         }
@@ -382,13 +417,20 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     Toast.makeText(requireContext(), "Width/Height must be > 0", Toast.LENGTH_SHORT).show()
                     calibrationPointsNormalized.removeLastOrNull()
                     mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+                    updateCalibrationGuidanceHint()
                     return@setPositiveButton
                 }
                 saveCalibrationSession(realWidth, realHeight)
             }
+            .setNeutralButton("Undo last calibrated") { _, _ ->
+                calibrationPointsNormalized.removeLastOrNull()
+                mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+                updateCalibrationGuidanceHint()
+            }
             .setNegativeButton("Cancel") { _, _ ->
                 calibrationPointsNormalized.removeLastOrNull()
                 mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
+                updateCalibrationGuidanceHint()
             }
             .show()
     }
@@ -426,6 +468,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         calibrationLocked = true
         mapView.setCalibrationCursorEnabled(false)
         updateAddPointButtonUi()
+        (activity as? MainActivity)?.showStartHint("Calibration saved. You can add report points now")
         Toast.makeText(requireContext(), "Calibration saved", Toast.LENGTH_SHORT).show()
     }
 
@@ -1272,8 +1315,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
 
         val servingFileName = when (IndoorSessionManager.radioMode) {
-            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_FLOOR_PLAN_SURV_WIFI_$timestamp.csv"
-            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_FLOOR_PLAN_SURV_CELLULAR_$timestamp.csv"
+            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_FLOOR_PLAN_SERV_WIFI_$timestamp.csv"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_FLOOR_PLAN_SERV_CELLULAR_$timestamp.csv"
         }
         val neighborFileName = when (IndoorSessionManager.radioMode) {
             IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_FLOOR_PLAN_NEI_WIFI_$timestamp.csv"
@@ -1298,17 +1341,103 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             IndoorSessionManager.RadioMode.CELLULAR -> floorPlanCellNeighborRows()
         }
 
-        val okServing = saveCsvToFloorPlan(servingFileName, servingHeader, servingRows, exportSubDir)
-        val okNeighbor = saveCsvToFloorPlan(neighborFileName, neighborHeader, neighborRows, exportSubDir)
         val imageFileName = servingFileName.removeSuffix(".csv") + ".png"
-        val okImage = saveFloorPlanImage(imageFileName, exportSubDir)
-        val ok = okServing && okNeighbor && okImage
+        val zipFileName = "Session_${sessionId}_FLOOR_PLAN_EXPORT_$timestamp.zip"
+
+        val ok = saveFloorPlanZip(
+            zipFileName = zipFileName,
+            subDir = exportSubDir,
+            servingFileName = servingFileName,
+            servingHeader = servingHeader,
+            servingRows = servingRows,
+            neighborFileName = neighborFileName,
+            neighborHeader = neighborHeader,
+            neighborRows = neighborRows,
+            imageFileName = imageFileName
+        )
+
         if (showToast) {
             Toast.makeText(
                 requireContext(),
-                if (ok) "Saved: Download/DriveTest/FloorPlan/$exportSubDir/$servingFileName (+ neighbor + image)" else "Export failed",
+                if (ok) "Saved ZIP: Download/DriveTest/FloorPlan/$exportSubDir/$zipFileName" else "Export failed",
                 Toast.LENGTH_LONG
             ).show()
+        }
+    }
+
+    private fun csvContent(header: List<String>, rows: List<List<String>>): ByteArray {
+        val content = buildString {
+            append(header.joinToString(";")).append("\n")
+            rows.forEach { row -> append(row.joinToString(";")).append("\n") }
+        }
+        return content.toByteArray(Charsets.UTF_8)
+    }
+
+    private fun floorPlanImageBytesPng(): ByteArray? {
+        if (!::mapView.isInitialized) return null
+        val bitmap = mapView.createExportBitmapWithPoints() ?: return null
+        val bos = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, bos)
+        return bos.toByteArray()
+    }
+
+    private fun saveFloorPlanZip(
+        zipFileName: String,
+        subDir: String,
+        servingFileName: String,
+        servingHeader: List<String>,
+        servingRows: List<List<String>>,
+        neighborFileName: String,
+        neighborHeader: List<String>,
+        neighborRows: List<List<String>>,
+        imageFileName: String
+    ): Boolean {
+        return try {
+            val imageBytes = floorPlanImageBytesPng() ?: return false
+            val servingBytes = csvContent(servingHeader, servingRows)
+            val neighborBytes = csvContent(neighborHeader, neighborRows)
+
+            val zipBytes = ByteArrayOutputStream().use { bos ->
+                ZipOutputStream(bos).use { zos ->
+                    fun addEntry(name: String, bytes: ByteArray) {
+                        val entry = ZipEntry(name)
+                        zos.putNextEntry(entry)
+                        zos.write(bytes)
+                        zos.closeEntry()
+                    }
+                    addEntry(servingFileName, servingBytes)
+                    addEntry(neighborFileName, neighborBytes)
+                    addEntry(imageFileName, imageBytes)
+                }
+                bos.toByteArray()
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, zipFileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/zip")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/FloorPlan/$subDir")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val resolver = requireContext().contentResolver
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return false
+                resolver.openOutputStream(uri)?.use { out -> out.write(zipBytes) }
+                values.clear()
+                values.put(MediaStore.Downloads.IS_PENDING, 0)
+                resolver.update(uri, values, null, null)
+                true
+            } else {
+                val dir = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "DriveTest/FloorPlan/$subDir"
+                )
+                if (!dir.exists()) dir.mkdirs()
+                val file = File(dir, zipFileName)
+                file.outputStream().use { out -> out.write(zipBytes) }
+                true
+            }
+        } catch (_: Exception) {
+            false
         }
     }
 

@@ -26,7 +26,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.math.roundToInt
@@ -761,6 +764,7 @@ class MainActivity : AppCompatActivity() {
                         isRecordingCsv = false
                         updateUnifiedSurveyButtonUi()
 
+                        saveGnssZipForCellular()
                         saveCellularCsv()
                         saveNeighborCsv()
                         currentCellularSessionId = null
@@ -818,6 +822,7 @@ class MainActivity : AppCompatActivity() {
                             return@setOnClickListener
                         }
 
+                        saveGnssZipForWifi(fragment.getCurrentSsid())
                         saveWifiCsv(fragment.getCurrentSsid())
                         saveWifiNeighborCsv()
                         currentWifiSessionId = null
@@ -1256,6 +1261,83 @@ class MainActivity : AppCompatActivity() {
         locationManager.removeUpdates(locListener)
         sensorManager?.unregisterListener(barometerListener)
         uiHandler.removeCallbacks(uiRunnable)
+    }
+
+    private fun csvBytes(header: List<String>, rows: List<List<String>>): ByteArray {
+        val text = buildString {
+            append(header.joinToString(";")).append("\n")
+            rows.forEach { append(it.joinToString(";")).append("\n") }
+        }
+        return text.toByteArray(Charsets.UTF_8)
+    }
+
+    private fun saveZipToDownloads(fileName: String, subDir: String, entries: List<Pair<String, ByteArray>>) {
+        try {
+            val zipBytes = ByteArrayOutputStream().use { bos ->
+                ZipOutputStream(bos).use { zos ->
+                    entries.forEach { (entryName, content) ->
+                        zos.putNextEntry(ZipEntry(entryName))
+                        zos.write(content)
+                        zos.closeEntry()
+                    }
+                }
+                bos.toByteArray()
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val resolver = contentResolver
+                val cv = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/zip")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/DriveTest/${currentDriveMode.folderName}/$subDir")
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv) ?: return
+                resolver.openOutputStream(uri)?.use { it.write(zipBytes) }
+                resolver.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
+            } else {
+                val dir = File(
+                    Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                    "DriveTest/${currentDriveMode.folderName}/$subDir"
+                )
+                if (!dir.exists()) dir.mkdirs()
+                File(dir, fileName).outputStream().use { it.write(zipBytes) }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun saveGnssZipForCellular() {
+        val sessionId = currentCellularSessionId ?: return
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val servName = "Session_${sessionId}_CELL_SERV_$timestamp.csv"
+        val neiName = "Session_${sessionId}_CELL_NEI_$timestamp.csv"
+        val zipName = "Session_${sessionId}_CELL_EXPORT_$timestamp.zip"
+        saveZipToDownloads(
+            fileName = zipName,
+            subDir = "Cellular",
+            entries = listOf(
+                servName to csvBytes(csvHeader, csvBuffer),
+                neiName to csvBytes(neighborCsvHeader, neighborCsvBuffer)
+            )
+        )
+    }
+
+    private fun saveGnssZipForWifi(ssid: String) {
+        val sessionId = currentWifiSessionId ?: return
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val safeSsid = ssid.replace(Regex("[^a-zA-Z0-9_]"), "_")
+        val servName = "Session_${sessionId}_WIFI_SERV_${safeSsid}_$timestamp.csv"
+        val neiName = "Session_${sessionId}_WIFI_NEI_$timestamp.csv"
+        val zipName = "Session_${sessionId}_WIFI_EXPORT_$timestamp.zip"
+        saveZipToDownloads(
+            fileName = zipName,
+            subDir = "Wifi",
+            entries = listOf(
+                servName to csvBytes(wifiCsvHeader, wifiCsvBuffer),
+                neiName to csvBytes(wifiNeighborHeader, wifiNeighborCsvBuffer)
+            )
+        )
     }
 
     // ================== SAVE CSV ==================

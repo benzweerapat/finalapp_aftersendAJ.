@@ -56,6 +56,11 @@ class IndoorPlotImageView @JvmOverloads constructor(
         strokeWidth = 3f
         color = Color.parseColor("#FDE68A")
     }
+    private val exportLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+        color = Color.WHITE
+        textSize = 28f
+    }
 
     private val pinHeadCenterYOffset = -40f
     private val pinStemTopYOffset = -34f
@@ -165,6 +170,17 @@ class IndoorPlotImageView @JvmOverloads constructor(
             val px = (pt.first * outW).toFloat()
             val py = (pt.second * outH).toFloat()
             drawFlag(c, px, py, index + 1)
+        }
+        if (points.isNotEmpty()) {
+            val start = points.first()
+            val sx = (start.nx * outW).toFloat()
+            val sy = (start.ny * outH).toFloat()
+            c.drawText("START (Report 1)", sx + 12f, sy - 12f, exportLabelPaint)
+
+            val stop = points.last()
+            val ex = (stop.nx * outW).toFloat()
+            val ey = (stop.ny * outH).toFloat()
+            c.drawText("STOP (Report ${points.size})", ex + 12f, ey - 12f, exportLabelPaint)
         }
         return result
     }
