@@ -56,15 +56,11 @@ class IndoorPlotImageView @JvmOverloads constructor(
         strokeWidth = 3f
         color = Color.parseColor("#FDE68A")
     }
-    private val exportLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.FILL
-        color = Color.WHITE
-        textSize = 28f
-    }
     private val exportPointNumberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
-        color = Color.WHITE
-        textSize = 16f
+        color = Color.BLACK
+        textSize = 12f
+        textAlign = Paint.Align.CENTER
     }
 
     private val pinHeadCenterYOffset = -40f
@@ -170,23 +166,12 @@ class IndoorPlotImageView @JvmOverloads constructor(
             pointPaint.color = it.color
             c.drawCircle(px, py, 9f, pointPaint)
             c.drawCircle(px, py, 9f, pointStrokePaint)
-            c.drawText("${index + 1}", px + 8f, py - 8f, exportPointNumberPaint)
+            c.drawText("${index + 1}", px, py + 4f, exportPointNumberPaint)
         }
         calibrationFlags.forEachIndexed { index, pt ->
             val px = (pt.first * outW).toFloat()
             val py = (pt.second * outH).toFloat()
             drawFlag(c, px, py, index + 1)
-        }
-        if (points.isNotEmpty()) {
-            val start = points.first()
-            val sx = (start.nx * outW).toFloat()
-            val sy = (start.ny * outH).toFloat()
-            c.drawText("START (Report 1)", sx + 12f, sy - 12f, exportLabelPaint)
-
-            val stop = points.last()
-            val ex = (stop.nx * outW).toFloat()
-            val ey = (stop.ny * outH).toFloat()
-            c.drawText("STOP (Latest Report ${points.size})", ex + 12f, ey - 12f, exportLabelPaint)
         }
         return result
     }
