@@ -765,8 +765,8 @@ class MainActivity : AppCompatActivity() {
                         updateUnifiedSurveyButtonUi()
 
                         saveGnssZipForCellular()
-                        saveCellularCsv()
-                        saveNeighborCsv()
+                        csvBuffer.clear()
+                        neighborCsvBuffer.clear()
                         currentCellularSessionId = null
                         clearPendingCellularSnapshot()
                         cellFrag.setGroundButtonsVisible(true)
@@ -823,8 +823,8 @@ class MainActivity : AppCompatActivity() {
                         }
 
                         saveGnssZipForWifi(fragment.getCurrentSsid())
-                        saveWifiCsv(fragment.getCurrentSsid())
-                        saveWifiNeighborCsv()
+                        wifiCsvBuffer.clear()
+                        wifiNeighborCsvBuffer.clear()
                         currentWifiSessionId = null
 
                         // 👁️ โชว์ปุ่มกลับ
@@ -1312,7 +1312,7 @@ class MainActivity : AppCompatActivity() {
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val servName = "Session_${sessionId}_CELL_SERV_$timestamp.csv"
         val neiName = "Session_${sessionId}_CELL_NEI_$timestamp.csv"
-        val zipName = "Session_${sessionId}_CELL_EXPORT_$timestamp.zip"
+        val zipName = "Session_${sessionId}_CELL_$timestamp.zip"
         saveZipToDownloads(
             fileName = zipName,
             subDir = "Cellular",
@@ -1329,7 +1329,7 @@ class MainActivity : AppCompatActivity() {
         val safeSsid = ssid.replace(Regex("[^a-zA-Z0-9_]"), "_")
         val servName = "Session_${sessionId}_WIFI_SERV_${safeSsid}_$timestamp.csv"
         val neiName = "Session_${sessionId}_WIFI_NEI_$timestamp.csv"
-        val zipName = "Session_${sessionId}_WIFI_EXPORT_$timestamp.zip"
+        val zipName = "Session_${sessionId}_WIFI_${safeSsid}_$timestamp.zip"
         saveZipToDownloads(
             fileName = zipName,
             subDir = "Wifi",

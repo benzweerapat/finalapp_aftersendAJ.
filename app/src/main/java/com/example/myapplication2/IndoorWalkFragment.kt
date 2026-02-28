@@ -137,6 +137,9 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         override fun run() {
             if (!isAdded) return
             refreshSignalPanel()
+            if (IndoorSessionManager.surveyRunning && !calibrationLocked) {
+                updateCalibrationGuidanceHint()
+            }
             uiHandler.postDelayed(this, 1000)
         }
     }
@@ -1342,7 +1345,10 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         }
 
         val imageFileName = servingFileName.removeSuffix(".csv") + ".png"
-        val zipFileName = "Session_${sessionId}_FLOOR_PLAN_EXPORT_$timestamp.zip"
+        val zipFileName = when (IndoorSessionManager.radioMode) {
+            IndoorSessionManager.RadioMode.WIFI -> "Session_${sessionId}_FLOOR_PLAN_WiFi_$timestamp.zip"
+            IndoorSessionManager.RadioMode.CELLULAR -> "Session_${sessionId}_FLOOR_PLAN_CELL_$timestamp.zip"
+        }
 
         val ok = saveFloorPlanZip(
             zipFileName = zipFileName,
