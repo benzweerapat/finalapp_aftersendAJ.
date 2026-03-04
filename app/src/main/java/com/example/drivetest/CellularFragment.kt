@@ -247,6 +247,7 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
         neighborAdapter = NeighborAdapter()
         rv.adapter = neighborAdapter
 
+        setGroundButtonsVisible(!mainActivity.isRecordingCsv)
         setButtonsState(mainActivity.isRecordingCsv)
     }
 

@@ -350,6 +350,8 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
         btnEditFloorHeight.setOnClickListener {
             showEditDialog()
         }
+
+        setGroundButtonsVisible(!mainActivity.isRecordingWifiCsv)
     }
 
     private fun showEditDialog() {
