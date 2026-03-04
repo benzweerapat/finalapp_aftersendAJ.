@@ -82,6 +82,7 @@ class MainActivity : AppCompatActivity() {
     private var currentTech = CurrentTech.CELL
     private var currentEnv = CurrentEnv.OUTDOOR
     private var indoorSurveyState = SurveyState.IDLE
+    private var indoorSaveVisible: Boolean = false
 
     // 🔒 ล็อก session ต่อ 1 การอัด
     private var currentCellularSessionId: Int? = null
@@ -581,6 +582,18 @@ class MainActivity : AppCompatActivity() {
 
     fun isIndoorDriveMode(): Boolean = currentDriveMode == DriveMode.FLOOR_PLAN
 
+    fun setIndoorSaveButtonVisible(visible: Boolean) {
+        indoorSaveVisible = visible
+        val scanBtn = findViewById<Button>(R.id.saveCsvButton) ?: return
+        if (supportFragmentManager.findFragmentById(R.id.fragment_container) is IndoorWalkFragment) {
+            scanBtn.visibility = if (visible) View.VISIBLE else View.GONE
+            scanBtn.text = "Save"
+            scanBtn.isEnabled = visible
+            scanBtn.alpha = if (visible) 1f else 0.4f
+        }
+    }
+
+
     private fun renderCurrentScreen() {
         if (currentEnv == CurrentEnv.INDOOR) {
             indoorSurveyState = if (IndoorSessionManager.surveyRunning) SurveyState.RUNNING else SurveyState.IDLE
@@ -602,7 +615,7 @@ class MainActivity : AppCompatActivity() {
                 ?.setSurveyRunning(IndoorSessionManager.surveyRunning)
         }
 
-        findViewById<Button>(R.id.saveCsvButton)?.visibility = View.VISIBLE
+        findViewById<Button>(R.id.saveCsvButton)?.visibility = if (currentEnv == CurrentEnv.INDOOR && !indoorSaveVisible) View.GONE else View.VISIBLE
 
         updateUnifiedSurveyButtonUi()
 
@@ -614,6 +627,9 @@ class MainActivity : AppCompatActivity() {
         scanBtn.isEnabled = true
         if (currentEnv == CurrentEnv.INDOOR) {
             scanBtn.text = "Save"
+            scanBtn.visibility = if (indoorSaveVisible) View.VISIBLE else View.GONE
+            scanBtn.isEnabled = indoorSaveVisible
+            scanBtn.alpha = if (indoorSaveVisible) 1f else 0.4f
             return
         }
         val running = isRecordingCsv || isRecordingWifiCsv
@@ -1089,10 +1105,10 @@ class MainActivity : AppCompatActivity() {
         val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
 
         if (fragment is IndoorWalkFragment) {
-            scanBtn.visibility = View.VISIBLE
+            scanBtn.visibility = if (indoorSaveVisible) View.VISIBLE else View.GONE
             scanBtn.text = "Save"
-            scanBtn.isEnabled = true
-            scanBtn.alpha = 1f
+            scanBtn.isEnabled = indoorSaveVisible
+            scanBtn.alpha = if (indoorSaveVisible) 1f else 0.4f
             fragment.setStartPrerequisitesReady(true)
             clearStartHint()
             return

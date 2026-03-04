@@ -169,6 +169,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 refreshMapPoints()
                 updatePointCount()
                 updateAddPointButtonUi()
+                updatePrimaryActionButtonState()
                 (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
                     ?.setSurveyUiVisible(false)
 
@@ -202,6 +203,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     private fun updatePointCount() {
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.updatePointCount(IndoorSessionManager.points.size)
+        (activity as? MainActivity)?.setIndoorSaveButtonVisible(pointRecords.isNotEmpty())
     }
 
     fun setRadioMode(mode: IndoorSessionManager.RadioMode) {
@@ -244,6 +246,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     fun isSurveyRunning(): Boolean = IndoorSessionManager.surveyRunning
 
+
     fun setSurveyRunning(running: Boolean) {
         IndoorSessionManager.surveyRunning = running
         updateGroundButtonsEnabledState()
@@ -275,9 +278,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnAddPointClickListener {
                 if (IndoorSessionManager.config?.calibrationSession == null) {
-                    Toast.makeText(requireContext(), "Please complete Calibration (4 flags) before Add Point", Toast.LENGTH_SHORT).show()
+                    captureCalibrationFlagAtPin()
+                    updatePrimaryActionButtonState()
                     return@setOnAddPointClickListener
                 }
+
                 val pinTip = mapView.getPinTipNormalized()
                 if (pinTip == null) {
                     Toast.makeText(requireContext(), "Move map so pin is over floor plan", Toast.LENGTH_SHORT).show()
@@ -307,6 +312,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 recordPoint(pinTip.first.toFloat(), pinTip.second.toFloat())
                 refreshMapPoints()
                 updatePointCount()
+                updatePrimaryActionButtonState()
             }
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnUndoClickListener {
@@ -327,6 +333,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     neighborRecords.removeAll { it.pointNo == removedPoint.pointNo }
                     refreshMapPoints()
                     updatePointCount()
+                    updatePrimaryActionButtonState()
                 } catch (e: Exception) {
                     Toast.makeText(requireContext(), "Undo failed: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
@@ -339,6 +346,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 neighborRecords.clear()
                 refreshMapPoints()
                 updatePointCount()
+                updatePrimaryActionButtonState()
                 Toast.makeText(requireContext(), "Cleared all points", Toast.LENGTH_SHORT).show()
             }
 
@@ -352,9 +360,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
         view.findViewById<Button>(R.id.btnResetView).setOnClickListener { mapView.resetViewFitScreen() }
 
-        view.findViewById<Button>(R.id.btnCalibration).setOnClickListener {
-            captureCalibrationFlagAtPin()
-        }
+        view.findViewById<Button>(R.id.btnCalibration).visibility = View.GONE
 
         view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
             if (IndoorSessionManager.surveyRunning) {
@@ -366,6 +372,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
         updatePointCount()
         updateGroundControlLabels()
+        updatePrimaryActionButtonState()
         updateGroundButtonsEnabledState()
         updateAddPointButtonUi()
         refreshSignalPanel()
@@ -558,6 +565,7 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         mapView.setCalibrationCursorEnabled(false)
         updateAddPointButtonUi()
         updateGroundControlLabels()
+        updatePrimaryActionButtonState()
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setSurveyUiVisible(true)
         (activity as? MainActivity)?.showStartHint("Calibration saved. You can add report points now")
@@ -1391,7 +1399,16 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         neighborRecords.clear()
         refreshMapPoints()
         updatePointCount()
+        updatePrimaryActionButtonState()
         Toast.makeText(requireContext(), "Saved and cleared points", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun updatePrimaryActionButtonState() {
+        val calibrated = IndoorSessionManager.config?.calibrationSession != null
+        val panel = childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment
+        panel?.setPrimaryActionLabel(if (calibrated) "📍 Add Point" else "🎯 Calibration")
+        panel?.setAddPointEnabled(true)
+        (activity as? MainActivity)?.setIndoorSaveButtonVisible(pointRecords.isNotEmpty())
     }
 
     private fun exportCsv(showToast: Boolean) {

@@ -167,6 +167,10 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnAddPoint?.alpha = if (enabled) 1f else 0.75f
     }
 
+    fun setPrimaryActionLabel(label: String) {
+        btnAddPoint?.text = label
+    }
+
     fun setSurveyUiVisible(visible: Boolean) {
         val visibility = if (visible) View.VISIBLE else View.GONE
         textSignalMain?.visibility = visibility
