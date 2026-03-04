@@ -44,6 +44,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     private val uiHandler = Handler(Looper.getMainLooper())
     private val calibrationPointsNormalized = mutableListOf<Pair<Double, Double>>()
     private var calibrationLocked: Boolean = false
+    private var calibrationGuideShown: Boolean = false
 
     private data class FloorPlanPointRecord(
         val timestamp: String,
@@ -157,6 +158,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 IndoorSessionManager.config = IndoorSessionManager.config?.copy(calibrationSession = null)
                 calibrationPointsNormalized.clear()
                 calibrationLocked = false
+                calibrationGuideShown = false
                 mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
                 mapView.setCalibrationCursorEnabled(true)
 
@@ -217,6 +219,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         IndoorSessionManager.config = IndoorSessionManager.config?.copy(calibrationSession = null)
         calibrationPointsNormalized.clear()
         calibrationLocked = false
+        calibrationGuideShown = false
         mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
         mapView.setCalibrationCursorEnabled(true)
 
@@ -236,6 +239,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         IndoorSessionManager.config = IndoorSessionManager.config?.copy(calibrationSession = null)
         calibrationPointsNormalized.clear()
         calibrationLocked = false
+        calibrationGuideShown = false
         mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)
         mapView.setCalibrationCursorEnabled(false)
         pointRecords.clear()
@@ -452,15 +456,19 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
     private fun showCalibrationRequiredDialog() {
         if (!isAdded) return
         AlertDialog.Builder(requireContext())
-            .setTitle("Calibrated Required")
+            .setTitle("Calibration Required")
             .setMessage(
-                """step 1 : เลื่อนรูปภาพไปยังมุมตึกด้านซ้ายบนที่ต้องการให้ calibrated โดยให้ตรงกับ ธง
-step 2 : กดปุ่ม calibrated
-step 3 : ย้อนกลับไป step 1 แต่เลื่อนไปมุมขวาบน  ล่างขวา ล่างซ้าย
-**ซ้ายบน ขวาบน ขวาล่าง ซ้ายล่าง** เท่านั้น
-step 4 : กรอกความยาวจริง 2 ด้าน"""
+                """กรุณาคาลิเบรตตามลำดับมุมอาคารดังนี้:
+
+1) มุมบนซ้าย
+2) มุมบนขวา
+3) มุมล่างขวา
+4) มุมล่างซ้าย
+
+วิธีทำ: เลื่อนภาพให้ปลายธงตรงมุมที่ต้องการ แล้วกดปุ่ม Calibration ในแต่ละจุด
+หลังครบ 4 จุด ให้กรอกความกว้างและความยาวจริง"""
             )
-            .setPositiveButton("OK", null)
+            .setPositiveButton("เข้าใจแล้ว", null)
             .show()
     }
     private fun updateAddPointButtonUi() {
@@ -490,6 +498,11 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         if (calibrationPointsNormalized.size >= 4) {
             Toast.makeText(requireContext(), "Calibration pointsครบแล้ว", Toast.LENGTH_SHORT).show()
             return
+        }
+
+        if (!calibrationGuideShown) {
+            showCalibrationRequiredDialog()
+            calibrationGuideShown = true
         }
 
         calibrationPointsNormalized.add(pinTip)

@@ -60,7 +60,7 @@
                 android:id="@+id/btnResetView"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="Fit"
+                android:text="Reset cam"
                 android:textAllCaps="false"
                 android:textSize="10sp" />
         </LinearLayout>
