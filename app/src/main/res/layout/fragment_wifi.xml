@@ -522,6 +522,8 @@
                             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                             android:layout_width="match_parent"
                             android:layout_height="28dp"
+                            android:visibility="gone"
+                            android:enabled="false"
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"

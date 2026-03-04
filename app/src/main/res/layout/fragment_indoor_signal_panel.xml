@@ -130,6 +130,8 @@
                 android:id="@+id/btnEditFloorHeight"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
+                android:visibility="gone"
+                android:enabled="false"
                 android:layout_marginStart="6dp"
                 android:text="Edit Height"
                 android:textAllCaps="false"
