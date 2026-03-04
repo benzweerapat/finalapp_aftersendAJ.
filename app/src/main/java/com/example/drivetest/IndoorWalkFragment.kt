@@ -244,6 +244,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     fun setSurveyRunning(running: Boolean) {
         IndoorSessionManager.surveyRunning = running
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setSurveyUiVisible(running)
         updateGroundButtonsEnabledState()
         updateAddPointButtonUi()
     }
@@ -266,6 +268,9 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 .replace(R.id.indoorSignalPanelContainer, IndoorSignalPanelFragment())
                 .commitNow()
         }
+
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setSurveyUiVisible(IndoorSessionManager.surveyRunning)
 
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnAddPointClickListener {

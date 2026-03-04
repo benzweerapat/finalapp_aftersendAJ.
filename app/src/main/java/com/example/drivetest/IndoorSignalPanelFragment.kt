@@ -101,7 +101,7 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnEditFloorHeight?.setOnClickListener { onEditFloorHeightClick?.invoke() }
         btnCalibrate?.visibility = View.GONE
         btnEditFloorHeight?.visibility = View.GONE
-        refreshToggleUi()
+        setSurveyUiVisible(false)
     }
 
     fun updateSignal(main: String, sub: String) {
@@ -157,6 +157,22 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     fun setAddPointEnabled(enabled: Boolean) {
         btnAddPoint?.isEnabled = enabled
         btnAddPoint?.alpha = if (enabled) 1f else 0.75f
+    }
+
+    fun setSurveyUiVisible(visible: Boolean) {
+        val visibility = if (visible) View.VISIBLE else View.GONE
+        textSignalMain?.visibility = visibility
+        textSignalSub?.visibility = visibility
+        textPointCount?.visibility = visibility
+        btnUndo?.visibility = visibility
+        btnClear?.visibility = visibility
+        btnToggle?.visibility = visibility
+
+        if (!visible) {
+            expandedItemId = null
+            removeInlineDetails()
+        }
+        refreshToggleUi()
     }
 
     fun setMode(mode: IndoorSessionManager.RadioMode) {
