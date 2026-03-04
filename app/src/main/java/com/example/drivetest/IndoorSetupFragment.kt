@@ -235,7 +235,8 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
 
     private fun updateActionButtons() {
         startCalibrationButton.isEnabled = canStartCalibration()
-        startSurveyButton.visibility = if (calibrationSession != null) View.VISIBLE else View.GONE
+        startSurveyButton.isEnabled = calibrationSession != null
+        startSurveyButton.alpha = if (calibrationSession != null) 1f else 0.5f
     }
 
     private fun canStartCalibration(): Boolean {
