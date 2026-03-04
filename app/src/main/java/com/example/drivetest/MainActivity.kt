@@ -643,6 +643,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ================== BUTTONS ==================
+    private fun requireIndoorFloorPlanBrowse() {
+        IndoorSessionManager.importedFloorPlanUri = null
+        indoorSaveVisible = false
+        (supportFragmentManager.findFragmentById(R.id.fragment_container) as? IndoorWalkFragment)
+            ?.setStartPrerequisitesReady(false)
+        updateUnifiedSurveyButtonUi()
+    }
+
     private fun setupButtons() {
 
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
@@ -672,6 +680,7 @@ class MainActivity : AppCompatActivity() {
                 when (item.itemId) {
                     R.id.menu_cellular -> {
                         currentTech = CurrentTech.CELL
+                        requireIndoorFloorPlanBrowse()
                         updateTechButtonUi()
                         renderCurrentScreen()
                         true
@@ -682,6 +691,7 @@ class MainActivity : AppCompatActivity() {
                             return@setOnMenuItemClickListener true
                         }
                         currentTech = CurrentTech.WIFI
+                        requireIndoorFloorPlanBrowse()
                         updateTechButtonUi()
                         renderCurrentScreen()
                         true
@@ -722,7 +732,7 @@ class MainActivity : AppCompatActivity() {
 
                     currentDriveMode = newMode
                     currentEnv = if (currentDriveMode == DriveMode.FLOOR_PLAN) CurrentEnv.INDOOR else CurrentEnv.OUTDOOR
-
+                    requireIndoorFloorPlanBrowse()
 
                     renderCurrentScreen()
                     toast("Drive mode: ${currentDriveMode.label}")
