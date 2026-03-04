@@ -12,6 +12,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.widget.doAfterTextChanged
 import androidx.fragment.app.Fragment
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -88,6 +89,10 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
 
         startSurveyButton.setOnClickListener {
             goToSurvey()
+        }
+
+        floorInput.doAfterTextChanged {
+            updateActionButtons()
         }
 
         updateSummary()
@@ -241,7 +246,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     }
 
     private fun updateActionButtons() {
-        startCalibrationButton.isEnabled = selectedImageUri != null
+        startCalibrationButton.isEnabled = selectedImageUri != null && floorInput.text.toString().trim().isNotEmpty()
         startSurveyButton.visibility = if (calibrationSession != null) View.VISIBLE else View.GONE
     }
 
@@ -258,8 +263,9 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             )
         } ?: when {
             calibrationModeActive -> "Calibration: กำลังเลือกจุดอ้างอิง (ต้องครบ 4 จุด)"
-            selectedImageUri != null -> "Calibration: พร้อมเริ่มแล้ว (กด Start Calibration ได้เลย)"
-            else -> "Calibration: ยังไม่พร้อม (กรุณาอัปโหลด Floor Plan ก่อน)"
+            selectedImageUri == null -> "Calibration: ยังไม่พร้อม (กรุณาอัปโหลด Floor Plan ก่อน)"
+            floorInput.text.toString().trim().isBlank() -> "Calibration: กรุณาระบุชื่อชั้น (Floor) ก่อนเริ่ม"
+            else -> "Calibration: พร้อมเริ่มแล้ว (กด Start Calibration ได้เลย)"
         }
         calibrationSummary.text = listOfNotNull(base, extra).joinToString("\n")
     }
