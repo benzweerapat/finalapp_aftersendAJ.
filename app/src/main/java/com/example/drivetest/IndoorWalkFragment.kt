@@ -469,8 +469,8 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
     }
 
     private fun captureCalibrationFlagAtPin() {
-        val main = activity as? MainActivity
-        if (main != null && !main.hasSelectedStartFloor) {
+        val configFloorName = IndoorSessionManager.config?.floorName?.trim().orEmpty()
+        if (configFloorName.isBlank()) {
             Toast.makeText(requireContext(), "Please select Floor before calibration", Toast.LENGTH_SHORT).show()
             return
         }
