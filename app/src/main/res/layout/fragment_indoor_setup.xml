@@ -57,7 +57,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
-            android:enabled="true"
             android:text="Start Calibration (4 points)" />
 
         <EditText
@@ -92,7 +91,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:visibility="gone"
             android:text="Start Indoor Walk Survey" />
 
     </LinearLayout>
