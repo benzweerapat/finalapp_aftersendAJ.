@@ -528,7 +528,7 @@
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
                             android:layout_marginTop="4dp"
-                            android:text="Edit Height"
+                            android:text="Height 0.0 m"
                             android:textAllCaps="false"
                             android:textSize="9sp"
                             android:maxLines="1"

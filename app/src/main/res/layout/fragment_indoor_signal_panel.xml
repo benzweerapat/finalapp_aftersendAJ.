@@ -133,7 +133,7 @@
                 android:visibility="gone"
                 android:enabled="false"
                 android:layout_marginStart="6dp"
-                android:text="Edit Height"
+                android:text="Height 0.0 m"
                 android:textAllCaps="false"
                 android:textSize="10sp"
                 android:minWidth="0dp"
