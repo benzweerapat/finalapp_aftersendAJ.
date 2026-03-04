@@ -256,7 +256,11 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
                 0.00000899,
                 lonScale
             )
-        } ?: if (calibrationModeActive) "Calibration: กำลังเลือกจุดอ้างอิง (ต้องครบ 4 จุด)" else "Calibration: ยังไม่พร้อม (กด Start Calibration)"
+        } ?: when {
+            calibrationModeActive -> "Calibration: กำลังเลือกจุดอ้างอิง (ต้องครบ 4 จุด)"
+            selectedImageUri != null -> "Calibration: พร้อมเริ่มแล้ว (กด Start Calibration ได้เลย)"
+            else -> "Calibration: ยังไม่พร้อม (กรุณาอัปโหลด Floor Plan ก่อน)"
+        }
         calibrationSummary.text = listOfNotNull(base, extra).joinToString("\n")
     }
 
