@@ -46,7 +46,7 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/floor_plan_placeholder" />
 
-            <com.example.myapplication2.FloorPlanOverlayView
+            <com.example.drivetest.FloorPlanOverlayView
                 android:id="@+id/setupFloorOverlay"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent" />

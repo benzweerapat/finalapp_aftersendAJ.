@@ -259,39 +259,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="12dp"/>
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STANDARD"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
 
-                    <TextView
-                        android:id="@+id/wifiStandard"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="TX / RX"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiTxRx"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="— / — Mbps"
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
                 </LinearLayout>
 
                 <!-- DIVIDER -->
@@ -324,43 +292,7 @@
                         android:textStyle="bold"
                         android:textSize="16sp"/>
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
 
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SNR"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiSnr"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="— "
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SPEED"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiSpeed"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="— Mbps"
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
                 </LinearLayout>
 
             </LinearLayout>
@@ -551,7 +483,7 @@
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:text="Select floor"
+                            android:text="Floor --"
                             android:textAllCaps="false"
                             android:textSize="9sp"
                             android:maxLines="1"

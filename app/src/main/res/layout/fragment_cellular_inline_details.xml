@@ -337,66 +337,11 @@
                         android:paddingStart="8dp"
                         android:gravity="top">
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnCalibrate"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="30dp"
-                            android:minHeight="0dp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:text="Select floor"
-                            android:textAllCaps="false"
-                            android:textSize="9sp"
-                            android:maxLines="1"
-                            android:ellipsize="end"
-                            android:paddingStart="8dp"
-                            android:paddingEnd="8dp"
-                            android:textColor="#60A5FA"
-                            app:strokeColor="#3B82F6"
-                            app:strokeWidth="1dp"
-                            app:cornerRadius="20dp" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnReset"
-                            android:visibility="gone"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="30dp"
-                            android:minHeight="0dp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:layout_marginTop="4dp"
-                            android:text="Reset"
-                            android:textAllCaps="false"
-                            android:textSize="9sp"
-                            android:maxLines="1"
-                            android:ellipsize="end"
-                            android:paddingStart="8dp"
-                            android:paddingEnd="8dp"
-                            android:textColor="#F87171"
-                            app:strokeColor="#EF4444"
-                            app:strokeWidth="1dp"
-                            app:cornerRadius="20dp" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/btnEditFloorHeight"
-                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                            android:layout_width="match_parent"
-                            android:layout_height="28dp"
-                            android:minHeight="0dp"
-                            android:insetTop="0dp"
-                            android:insetBottom="0dp"
-                            android:layout_marginTop="4dp"
-                            android:text="Edit Height"
-                            android:textAllCaps="false"
-                            android:textSize="9sp"
-                            android:maxLines="1"
-                            android:ellipsize="end"
-                            android:textColor="#FB923C"
-                            app:strokeColor="#F97316"
-                            app:strokeWidth="1dp"
-                            app:cornerRadius="16dp" />
+
+
+
                     </LinearLayout>
                 </LinearLayout>
 

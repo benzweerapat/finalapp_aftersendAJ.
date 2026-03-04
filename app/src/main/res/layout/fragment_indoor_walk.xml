@@ -3,7 +3,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.example.myapplication2.IndoorPlotImageView
+    <com.example.drivetest.IndoorPlotImageView
         android:id="@+id/indoorMapView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"

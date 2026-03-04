@@ -345,7 +345,7 @@
                             android:minHeight="0dp"
                             android:insetTop="0dp"
                             android:insetBottom="0dp"
-                            android:text="Select floor"
+                            android:text="Floor --"
                             android:textAllCaps="false"
                             android:textSize="9sp"
                             android:maxLines="1"
