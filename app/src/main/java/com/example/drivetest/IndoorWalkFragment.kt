@@ -363,8 +363,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
         view.findViewById<Button>(R.id.btnResetView).setOnClickListener { mapView.resetViewFitScreen() }
 
-        view.findViewById<Button>(R.id.btnCalibration).visibility = View.GONE
-
         view.findViewById<Button>(R.id.btnBrowseFloorPlan).setOnClickListener {
             if (IndoorSessionManager.surveyRunning) {
                 Toast.makeText(requireContext(), "Stop survey before changing floor plan", Toast.LENGTH_SHORT).show()
