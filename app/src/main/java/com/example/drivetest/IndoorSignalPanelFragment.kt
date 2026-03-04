@@ -59,6 +59,7 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     private var btnAddPoint: Button? = null
     private var btnUndo: Button? = null
     private var btnClear: Button? = null
+    private var btnSave: Button? = null
     private var btnCalibrate: Button? = null
     private var btnEditFloorHeight: Button? = null
     private var detailsContainer: FrameLayout? = null
@@ -66,6 +67,7 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
     private var onAddPointClick: (() -> Unit)? = null
     private var onUndoClick: (() -> Unit)? = null
     private var onClearClick: (() -> Unit)? = null
+    private var onSaveClick: (() -> Unit)? = null
     private var onCalibrateClick: (() -> Unit)? = null
     private var onEditFloorHeightClick: (() -> Unit)? = null
 
@@ -82,9 +84,9 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnAddPoint = view.findViewById(R.id.btnAddPoint)
         btnUndo = view.findViewById(R.id.btnUndo)
         btnClear = view.findViewById(R.id.btnClear)
+        btnSave = view.findViewById(R.id.btnSave)
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
-        btnEditFloorHeight?.visibility = View.GONE
         detailsContainer = view.findViewById(R.id.detailsContainer)
         detailsContainer?.id = View.generateViewId()
 
@@ -97,10 +99,9 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnAddPoint?.setOnClickListener { onAddPointClick?.invoke() }
         btnUndo?.setOnClickListener { onUndoClick?.invoke() }
         btnClear?.setOnClickListener { onClearClick?.invoke() }
+        btnSave?.setOnClickListener { onSaveClick?.invoke() }
         btnCalibrate?.setOnClickListener { onCalibrateClick?.invoke() }
         btnEditFloorHeight?.setOnClickListener { onEditFloorHeightClick?.invoke() }
-        btnCalibrate?.visibility = View.GONE
-        btnEditFloorHeight?.visibility = View.GONE
         setSurveyUiVisible(false)
     }
 
@@ -128,6 +129,10 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
 
     fun setOnCalibrateClickListener(listener: (() -> Unit)?) {
         onCalibrateClick = listener
+    }
+
+    fun setOnSaveClickListener(listener: (() -> Unit)?) {
+        onSaveClick = listener
     }
 
     fun setOnEditFloorHeightClickListener(listener: (() -> Unit)?) {
@@ -166,6 +171,7 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         textPointCount?.visibility = visibility
         btnUndo?.visibility = visibility
         btnClear?.visibility = visibility
+        btnSave?.visibility = visibility
         btnToggle?.visibility = visibility
 
         if (!visible) {

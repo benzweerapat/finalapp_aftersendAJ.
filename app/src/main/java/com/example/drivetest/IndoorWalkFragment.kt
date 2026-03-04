@@ -169,6 +169,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 refreshMapPoints()
                 updatePointCount()
                 updateAddPointButtonUi()
+                (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+                    ?.setSurveyUiVisible(false)
 
                 (activity as? MainActivity)?.showStartFloorDialog { selectedFloor ->
 
@@ -217,7 +219,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         IndoorSessionManager.surveyRunning = true
         setSurveyRunning(true)
         showCalibrationRequiredDialog()
-        (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
+        (activity as? MainActivity)?.showStartHint("พร้อมเริ่มคาลิเบรต: วางธง 4 จุดและกรอกขนาดจริง")
         Toast.makeText(requireContext(), "Survey started: press Calibration and pin 4 points", Toast.LENGTH_LONG).show()
     }
 
@@ -236,7 +238,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         neighborRecords.clear()
         refreshMapPoints()
         updatePointCount()
-        (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
+        (activity as? MainActivity)?.showStartHint("พร้อมเริ่มคาลิเบรต: วางธง 4 จุดและกรอกขนาดจริง")
         Toast.makeText(requireContext(), "Floor plan survey stopped", Toast.LENGTH_SHORT).show()
     }
 
@@ -244,8 +246,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
     fun setSurveyRunning(running: Boolean) {
         IndoorSessionManager.surveyRunning = running
-        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setSurveyUiVisible(running)
         updateGroundButtonsEnabledState()
         updateAddPointButtonUi()
     }
@@ -270,14 +270,10 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         }
 
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setSurveyUiVisible(IndoorSessionManager.surveyRunning)
+            ?.setSurveyUiVisible(IndoorSessionManager.config?.calibrationSession != null)
 
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnAddPointClickListener {
-                if (!IndoorSessionManager.surveyRunning) {
-                    (activity as? MainActivity)?.showStartHint("Please press START first")
-                    return@setOnAddPointClickListener
-                }
                 if (IndoorSessionManager.config?.calibrationSession == null) {
                     Toast.makeText(requireContext(), "Please complete Calibration (4 flags) before Add Point", Toast.LENGTH_SHORT).show()
                     return@setOnAddPointClickListener
@@ -346,6 +342,14 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 Toast.makeText(requireContext(), "Cleared all points", Toast.LENGTH_SHORT).show()
             }
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnSaveClickListener {
+                exportCsv(showToast = true)
+            }
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setOnEditFloorHeightClickListener {
+                showEditFloorHeightDialog()
+            }
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnCalibrateClickListener {
                 if (IndoorSessionManager.surveyRunning) {
                     Toast.makeText(requireContext(), "Stop recording before changing floor", Toast.LENGTH_SHORT).show()
@@ -369,10 +373,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         view.findViewById<Button>(R.id.btnResetView).setOnClickListener { mapView.resetViewFitScreen() }
 
         view.findViewById<Button>(R.id.btnCalibration).setOnClickListener {
-            if (!IndoorSessionManager.surveyRunning) {
-                Toast.makeText(requireContext(), "Please press START before calibration", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
             captureCalibrationFlagAtPin()
         }
 
@@ -390,7 +390,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
         updateAddPointButtonUi()
         refreshSignalPanel()
         if (!IndoorSessionManager.surveyRunning) {
-            (activity as? MainActivity)?.showStartHint("Place the phone on the floor before pressing START")
+            (activity as? MainActivity)?.showStartHint("พร้อมเริ่มคาลิเบรต: วางธง 4 จุดและกรอกขนาดจริง")
         }
     }
 
@@ -477,12 +477,16 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
     }
     private fun updateAddPointButtonUi() {
         val calibrationReady = IndoorSessionManager.config?.calibrationSession != null
-        val enabled = startPrerequisitesReady && calibrationReady && IndoorSessionManager.surveyRunning
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setAddPointEnabled(enabled)
+            ?.setAddPointEnabled(calibrationReady)
     }
 
     private fun captureCalibrationFlagAtPin() {
+        val main = activity as? MainActivity
+        if (main != null && !main.hasSelectedStartFloor) {
+            Toast.makeText(requireContext(), "Please select Floor before calibration", Toast.LENGTH_SHORT).show()
+            return
+        }
         if (calibrationLocked) {
             Toast.makeText(requireContext(), "Calibration already saved for this run", Toast.LENGTH_SHORT).show()
             return
@@ -573,6 +577,9 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         calibrationLocked = true
         mapView.setCalibrationCursorEnabled(false)
         updateAddPointButtonUi()
+        updateGroundControlLabels()
+        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+            ?.setSurveyUiVisible(true)
         (activity as? MainActivity)?.showStartHint("Calibration saved. You can add report points now")
         Toast.makeText(requireContext(), "Calibration saved", Toast.LENGTH_SHORT).show()
     }
@@ -581,7 +588,7 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
         val main = activity as? MainActivity ?: return
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)?.apply {
             updateCalibrateButtonLabel(main.getStartFloorButtonLabel())
-
+            updateEditFloorHeightButtonLabel(main.getFloorHeightButtonLabel())
         }
     }
 
@@ -591,6 +598,29 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
     }
 
 
+
+    private fun showEditFloorHeightDialog() {
+        val input = EditText(requireContext())
+        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        val main = activity as? MainActivity ?: return
+        input.setText(main.floorHeightMeters.toString())
+
+        AlertDialog.Builder(requireContext())
+            .setTitle("Floor Height (m)")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val v = input.text.toString().toFloatOrNull()
+                if (v != null && v > 0f) {
+                    main.onFloorHeightSelected(v)
+                    updateGroundControlLabels()
+                    Toast.makeText(requireContext(), "Saved: $v m", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(requireContext(), "Invalid floor height", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
 
     private fun ensureDefaultConfigIfMissing() {
         if (IndoorSessionManager.config != null) return

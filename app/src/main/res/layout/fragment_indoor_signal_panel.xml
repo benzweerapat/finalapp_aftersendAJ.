@@ -90,6 +90,18 @@
                 android:minWidth="0dp"
                 android:paddingStart="16dp"
                 android:paddingEnd="16dp" />
+
+            <Button
+                android:id="@+id/btnSave"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="6dp"
+                android:text="💾 Save"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                android:minWidth="0dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp" />
         </LinearLayout>
 
         <TextView
@@ -130,8 +142,7 @@
                 android:id="@+id/btnEditFloorHeight"
                 android:layout_width="wrap_content"
                 android:layout_height="32dp"
-                android:visibility="gone"
-                android:enabled="false"
+                android:enabled="true"
                 android:layout_marginStart="6dp"
                 android:text="Height 0.0 m"
                 android:textAllCaps="false"

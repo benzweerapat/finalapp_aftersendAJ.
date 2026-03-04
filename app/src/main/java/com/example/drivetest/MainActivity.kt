@@ -602,7 +602,8 @@ class MainActivity : AppCompatActivity() {
                 ?.setSurveyRunning(IndoorSessionManager.surveyRunning)
         }
 
-        findViewById<Button>(R.id.saveCsvButton)?.visibility = View.VISIBLE
+        findViewById<Button>(R.id.saveCsvButton)?.visibility =
+            if (currentEnv == CurrentEnv.INDOOR) View.GONE else View.VISIBLE
 
         updateUnifiedSurveyButtonUi()
 
@@ -1098,6 +1099,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateStartButtonState() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
+        val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
+
+        if (fragment is IndoorWalkFragment) {
+            scanBtn.visibility = View.GONE
+            scanBtn.isEnabled = false
+            scanBtn.alpha = 0.4f
+            fragment.setStartPrerequisitesReady(true)
+            clearStartHint()
+            return
+        }
+
+        scanBtn.visibility = View.VISIBLE
 
         // ถ้ากำลังอัด → START ต้องกดได้ และไม่ต้องมีข้อความเตือน
         if (isRecordingCsv || isRecordingWifiCsv || indoorSurveyState == SurveyState.RUNNING) {
@@ -1106,8 +1119,6 @@ class MainActivity : AppCompatActivity() {
             clearStartHint()
             return
         }
-
-        val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
 
         when (fragment) {
 
