@@ -94,12 +94,12 @@
 
         <TextView
             android:id="@+id/textAddPointHint"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Please press START first"
-            android:textColor="#FCA5A5"
-            android:textSize="11sp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginTop="0dp"
+            android:text=""
+            android:textColor="@android:color/transparent"
+            android:textSize="0sp"
             android:visibility="gone" />
 
         <!-- Row: floor/height controls + toggle details -->

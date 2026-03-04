@@ -43,13 +43,13 @@
 
             <TextView
                 android:id="@+id/startHintText"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
                 android:text=""
-                android:textColor="#F87171"
-                android:textSize="12sp"
+                android:textColor="@android:color/transparent"
+                android:textSize="0sp"
                 android:visibility="gone"
-                android:layout_marginTop="6dp"/>
+                android:layout_marginTop="0dp"/>
         </LinearLayout>
 
 
