@@ -69,15 +69,14 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
         }
 
         startCalibrationButton.setOnClickListener {
-            if (selectedImageUri == null) {
-                toast("กรุณาเลือก Floor Plan ก่อน")
+            if (!canStartCalibration()) {
+                toast("กรุณาเลือก Floor Plan และระบุชื่อชั้นก่อน")
                 return@setOnClickListener
             }
             calibrationPoints.clear()
             calibrationSession = null
             calibrationModeActive = true
             syncOverlay()
-            showCalibrationStartDialog()
             updateSummary("Calibration Mode พร้อมใช้งาน: เลือกจุด 1-4 (บนซ้าย → บนขวา → ล่างขวา → ล่างซ้าย)")
             updateActionButtons()
         }
@@ -93,6 +92,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
 
         floorInput.doAfterTextChanged {
             updateActionButtons()
+            updateSummary()
         }
 
         updateSummary()
@@ -100,7 +100,11 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     }
 
     private fun handleTouch(event: MotionEvent) {
-        if (selectedImageUri == null || !calibrationModeActive) return
+        if (!canStartCalibration()) return
+        if (!calibrationModeActive) {
+            calibrationModeActive = true
+            updateSummary("Calibration Mode พร้อมใช้งาน: เลือกจุด 1-4 (บนซ้าย → บนขวา → ล่างขวา → ล่างซ้าย)")
+        }
         val normalized = NormalizedCoordinateMapper.viewToNormalized(imageView, event.x, event.y) ?: return
         val drawable = imageView.drawable ?: return
         val px = normalized.first * drawable.intrinsicWidth
@@ -196,22 +200,6 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     }
 
 
-    private fun showCalibrationStartDialog() {
-        AlertDialog.Builder(requireContext())
-            .setTitle("Calibration Mode")
-            .setMessage(
-                """เริ่มเลือก 4 จุดตามลำดับ:
-1) บนซ้าย
-2) บนขวา
-3) ล่างขวา
-4) ล่างซ้าย
-
-สามารถลาก marker เพื่อปรับตำแหน่งได้"""
-            )
-            .setPositiveButton("เริ่ม") { _, _ -> }
-            .show()
-    }
-
     private fun goToSurvey() {
         val project = projectInput.text.toString().trim().ifBlank { "IndoorProject" }
         val floor = floorInput.text.toString().trim().ifBlank { "Floor-1" }
@@ -246,8 +234,12 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     }
 
     private fun updateActionButtons() {
-        startCalibrationButton.isEnabled = selectedImageUri != null && floorInput.text.toString().trim().isNotEmpty()
+        startCalibrationButton.isEnabled = canStartCalibration()
         startSurveyButton.visibility = if (calibrationSession != null) View.VISIBLE else View.GONE
+    }
+
+    private fun canStartCalibration(): Boolean {
+        return selectedImageUri != null && floorInput.text.toString().trim().isNotEmpty()
     }
 
     private fun syncOverlay() {
@@ -265,7 +257,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             calibrationModeActive -> "Calibration: กำลังเลือกจุดอ้างอิง (ต้องครบ 4 จุด)"
             selectedImageUri == null -> "Calibration: ยังไม่พร้อม (กรุณาอัปโหลด Floor Plan ก่อน)"
             floorInput.text.toString().trim().isBlank() -> "Calibration: กรุณาระบุชื่อชั้น (Floor) ก่อนเริ่ม"
-            else -> "Calibration: พร้อมเริ่มแล้ว (กด Start Calibration ได้เลย)"
+            else -> "Calibration: พร้อมเริ่มแล้ว (แตะบนรูปเพื่อเริ่มวางจุดได้เลย)"
         }
         calibrationSummary.text = listOfNotNull(base, extra).joinToString("\n")
     }
