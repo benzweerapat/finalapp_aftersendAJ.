@@ -102,6 +102,9 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         btnSave?.setOnClickListener { onSaveClick?.invoke() }
         btnCalibrate?.setOnClickListener { onCalibrateClick?.invoke() }
         btnEditFloorHeight?.setOnClickListener { onEditFloorHeightClick?.invoke() }
+        btnSave?.visibility = View.GONE
+        btnCalibrate?.visibility = View.GONE
+        btnEditFloorHeight?.visibility = View.GONE
         setSurveyUiVisible(false)
     }
 
@@ -171,7 +174,6 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         textPointCount?.visibility = visibility
         btnUndo?.visibility = visibility
         btnClear?.visibility = visibility
-        btnSave?.visibility = visibility
         btnToggle?.visibility = visibility
 
         if (!visible) {

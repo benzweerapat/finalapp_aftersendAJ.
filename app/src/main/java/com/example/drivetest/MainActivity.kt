@@ -602,8 +602,7 @@ class MainActivity : AppCompatActivity() {
                 ?.setSurveyRunning(IndoorSessionManager.surveyRunning)
         }
 
-        findViewById<Button>(R.id.saveCsvButton)?.visibility =
-            if (currentEnv == CurrentEnv.INDOOR) View.GONE else View.VISIBLE
+        findViewById<Button>(R.id.saveCsvButton)?.visibility = View.VISIBLE
 
         updateUnifiedSurveyButtonUi()
 
@@ -613,11 +612,11 @@ class MainActivity : AppCompatActivity() {
     private fun updateUnifiedSurveyButtonUi() {
         val scanBtn = findViewById<Button>(R.id.saveCsvButton)
         scanBtn.isEnabled = true
-        val running = if (currentEnv == CurrentEnv.INDOOR) {
-            IndoorSessionManager.surveyRunning
-        } else {
-            isRecordingCsv || isRecordingWifiCsv
+        if (currentEnv == CurrentEnv.INDOOR) {
+            scanBtn.text = "Save"
+            return
         }
+        val running = isRecordingCsv || isRecordingWifiCsv
         applySurveyButtonState(scanBtn, running)
     }
 
@@ -765,19 +764,7 @@ class MainActivity : AppCompatActivity() {
 
 
                 is IndoorWalkFragment -> {
-                    if (fragment.isSurveyRunning()) {
-                        fragment.stopSurvey()
-                        indoorSurveyState = SurveyState.IDLE
-                        IndoorSessionManager.surveyRunning = false
-                    } else {
-                        if (!validateSelectionsBeforeStart()) return@setOnClickListener
-                        calibrateAltitude(startFloor)
-                        fragment.startSurvey()
-                        indoorSurveyState = SurveyState.RUNNING
-                        IndoorSessionManager.surveyRunning = true
-                    }
-                    scanBtn.text = if (fragment.isSurveyRunning()) "Stop" else "Start"
-                    scanBtn.visibility = View.VISIBLE
+                    fragment.saveAndClearFloorPlanPoints()
                     updateUnifiedSurveyButtonUi()
                 }
 
@@ -1102,9 +1089,10 @@ class MainActivity : AppCompatActivity() {
         val fragment = supportFragmentManager.findFragmentById(R.id.fragment_container)
 
         if (fragment is IndoorWalkFragment) {
-            scanBtn.visibility = View.GONE
-            scanBtn.isEnabled = false
-            scanBtn.alpha = 0.4f
+            scanBtn.visibility = View.VISIBLE
+            scanBtn.text = "Save"
+            scanBtn.isEnabled = true
+            scanBtn.alpha = 1f
             fragment.setStartPrerequisitesReady(true)
             clearStartHint()
             return

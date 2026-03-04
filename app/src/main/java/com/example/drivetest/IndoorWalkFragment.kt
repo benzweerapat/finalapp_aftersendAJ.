@@ -341,26 +341,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 updatePointCount()
                 Toast.makeText(requireContext(), "Cleared all points", Toast.LENGTH_SHORT).show()
             }
-        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setOnSaveClickListener {
-                exportCsv(showToast = true)
-            }
-        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setOnEditFloorHeightClickListener {
-                showEditFloorHeightDialog()
-            }
-        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setOnCalibrateClickListener {
-                if (IndoorSessionManager.surveyRunning) {
-                    Toast.makeText(requireContext(), "Stop recording before changing floor", Toast.LENGTH_SHORT).show()
-                    return@setOnCalibrateClickListener
-                }
-                (activity as? MainActivity)?.showStartFloorDialog { selectedFloor ->
-                    (activity as? MainActivity)?.onIndoorStartFloorSelected(selectedFloor)
-                    updateGroundControlLabels()
-                    Toast.makeText(requireContext(), "Selected floor: $selectedFloor", Toast.LENGTH_SHORT).show()
-                }
-            }
 
 
 
@@ -598,29 +578,6 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
     }
 
 
-
-    private fun showEditFloorHeightDialog() {
-        val input = EditText(requireContext())
-        input.inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        val main = activity as? MainActivity ?: return
-        input.setText(main.floorHeightMeters.toString())
-
-        AlertDialog.Builder(requireContext())
-            .setTitle("Floor Height (m)")
-            .setView(input)
-            .setPositiveButton("Save") { _, _ ->
-                val v = input.text.toString().toFloatOrNull()
-                if (v != null && v > 0f) {
-                    main.onFloorHeightSelected(v)
-                    updateGroundControlLabels()
-                    Toast.makeText(requireContext(), "Saved: $v m", Toast.LENGTH_SHORT).show()
-                } else {
-                    Toast.makeText(requireContext(), "Invalid floor height", Toast.LENGTH_SHORT).show()
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
-    }
 
     private fun ensureDefaultConfigIfMissing() {
         if (IndoorSessionManager.config != null) return
@@ -1420,6 +1377,21 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
                 it.long
             )
         }
+    }
+
+    fun saveAndClearFloorPlanPoints() {
+        if (pointRecords.isEmpty()) {
+            Toast.makeText(requireContext(), "No data to export", Toast.LENGTH_SHORT).show()
+            return
+        }
+        exportCsv(showToast = true)
+        IndoorSessionManager.points.clear()
+        IndoorSessionManager.plottedPointsNormalized.clear()
+        pointRecords.clear()
+        neighborRecords.clear()
+        refreshMapPoints()
+        updatePointCount()
+        Toast.makeText(requireContext(), "Saved and cleared points", Toast.LENGTH_SHORT).show()
     }
 
     private fun exportCsv(showToast: Boolean) {
