@@ -171,6 +171,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 updateAddPointButtonUi()
                 updatePrimaryActionButtonState()
                 (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
+                    ?.setAddPointVisible(true)
+                (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
                     ?.setSurveyUiVisible(false)
 
                 (activity as? MainActivity)?.showStartFloorDialog { selectedFloor ->
@@ -272,8 +274,9 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                 .commitNow()
         }
 
-        (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setSurveyUiVisible(IndoorSessionManager.config?.calibrationSession != null)
+        val panel = childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment
+        panel?.setAddPointVisible(IndoorSessionManager.importedFloorPlanUri != null)
+        panel?.setSurveyUiVisible(IndoorSessionManager.config?.calibrationSession != null)
 
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
             ?.setOnAddPointClickListener {

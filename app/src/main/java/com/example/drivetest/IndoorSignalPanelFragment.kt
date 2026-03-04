@@ -153,6 +153,10 @@ class IndoorSignalPanelFragment : Fragment(R.layout.fragment_indoor_signal_panel
         // hint now shown via MainActivity.startHintText for consistent position
     }
 
+    fun setAddPointVisible(visible: Boolean) {
+        btnAddPoint?.visibility = if (visible) View.VISIBLE else View.GONE
+    }
+
     fun setAddPointEnabled(enabled: Boolean) {
         btnAddPoint?.isEnabled = enabled
         btnAddPoint?.alpha = if (enabled) 1f else 0.75f
