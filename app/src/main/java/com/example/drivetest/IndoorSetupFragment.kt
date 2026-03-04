@@ -26,6 +26,8 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
     private lateinit var originLatInput: EditText
     private lateinit var originLongInput: EditText
     private lateinit var calibrationSummary: TextView
+    private lateinit var startCalibrationButton: Button
+    private lateinit var startSurveyButton: Button
 
     private var selectedImageUri: Uri? = null
     private var calibrationPoints = mutableListOf<Pair<Double, Double>>()
@@ -44,6 +46,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             toast("เลือก Floor/Height ใหม่สำหรับรูปแปลนใหม่")
             syncOverlay()
             updateSummary()
+            updateActionButtons()
         }
     }
 
@@ -57,12 +60,14 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
         originLatInput = view.findViewById(R.id.inputOriginLat)
         originLongInput = view.findViewById(R.id.inputOriginLong)
         calibrationSummary = view.findViewById(R.id.textCalibrationSummary)
+        startCalibrationButton = view.findViewById(R.id.btnStartCalibrationLine)
+        startSurveyButton = view.findViewById(R.id.btnGoSurvey)
 
         view.findViewById<Button>(R.id.btnPickFloorImage).setOnClickListener {
             pickImageLauncher.launch("image/*")
         }
 
-        view.findViewById<Button>(R.id.btnStartCalibrationLine).setOnClickListener {
+        startCalibrationButton.setOnClickListener {
             if (selectedImageUri == null) {
                 toast("กรุณาเลือก Floor Plan ก่อน")
                 return@setOnClickListener
@@ -73,6 +78,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             syncOverlay()
             showCalibrationStartDialog()
             updateSummary("Calibration Mode พร้อมใช้งาน: เลือกจุด 1-4 (บนซ้าย → บนขวา → ล่างขวา → ล่างซ้าย)")
+            updateActionButtons()
         }
 
         imageView.setOnTouchListener { _, event ->
@@ -80,11 +86,12 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
             true
         }
 
-        view.findViewById<Button>(R.id.btnGoSurvey).setOnClickListener {
+        startSurveyButton.setOnClickListener {
             goToSurvey()
         }
 
         updateSummary()
+        updateActionButtons()
     }
 
     private fun handleTouch(event: MotionEvent) {
@@ -114,11 +121,13 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
                 calibrationSession = null
                 syncOverlay()
                 updateSummary("กำลังปรับจุดที่ ${dragIndex + 1}")
+                updateActionButtons()
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (draggingPointIndex != null && calibrationPoints.size == 4) {
                     calibrationSession = null
+                    updateActionButtons()
                     requestRectangleDimensionsAndSolve()
                 }
                 draggingPointIndex = null
@@ -178,6 +187,7 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
         )
         calibrationModeActive = false
         updateSummary("Calibration complete")
+        updateActionButtons()
     }
 
 
@@ -228,6 +238,11 @@ class IndoorSetupFragment : Fragment(R.layout.fragment_indoor_setup) {
         parentFragmentManager.beginTransaction()
             .replace(R.id.fragment_container, IndoorWalkFragment())
             .commit()
+    }
+
+    private fun updateActionButtons() {
+        startCalibrationButton.isEnabled = selectedImageUri != null
+        startSurveyButton.visibility = if (calibrationSession != null) View.VISIBLE else View.GONE
     }
 
     private fun syncOverlay() {
