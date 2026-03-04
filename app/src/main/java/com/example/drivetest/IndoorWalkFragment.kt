@@ -464,8 +464,11 @@ step 4 : กรอกความยาวจริง 2 ด้าน"""
     }
     private fun updateAddPointButtonUi() {
         val calibrationReady = IndoorSessionManager.config?.calibrationSession != null
+        val floorSelected = IndoorSessionManager.config?.floorName?.trim()?.isNotEmpty() == true
+        val hasFloorPlanImage = (IndoorSessionManager.importedFloorPlanUri != null) || (IndoorSessionManager.config?.imageUri != null)
+        val canUsePrimaryAction = calibrationReady || (startPrerequisitesReady && floorSelected && hasFloorPlanImage)
         (childFragmentManager.findFragmentById(R.id.indoorSignalPanelContainer) as? IndoorSignalPanelFragment)
-            ?.setAddPointEnabled(calibrationReady)
+            ?.setAddPointEnabled(canUsePrimaryAction)
     }
 
     private fun captureCalibrationFlagAtPin() {
