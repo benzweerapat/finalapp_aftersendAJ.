@@ -59,13 +59,26 @@ object HomographyLibrary {
     }
 
     private fun arrayToMat3x3(values: DoubleArray): Mat {
+        require(values.size == 9) { "Homography must have 9 elements" }
         val mat = Mat(3, 3, CvType.CV_64F)
-        mat.put(0, 0, values)
+        for (r in 0 until 3) {
+            for (c in 0 until 3) {
+                mat.put(r, c, values[r * 3 + c])
+            }
+        }
         return mat
     }
 
     private fun mat3x3ToArray(mat: Mat): DoubleArray {
         require(mat.rows() == 3 && mat.cols() == 3) { "Homography must be 3x3" }
-        return DoubleArray(9).also { mat.get(0, 0, it) }
+        val out = DoubleArray(9)
+        val cell = DoubleArray(1)
+        for (r in 0 until 3) {
+            for (c in 0 until 3) {
+                mat.get(r, c, cell)
+                out[r * 3 + c] = cell[0]
+            }
+        }
+        return out
     }
 }
