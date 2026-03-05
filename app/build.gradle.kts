@@ -43,7 +43,7 @@ dependencies {
     implementation(libs.androidx.activity)
 
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.commons.math3)
+    implementation(libs.opencv.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
