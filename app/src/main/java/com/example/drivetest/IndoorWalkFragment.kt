@@ -225,7 +225,6 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
 
         IndoorSessionManager.surveyRunning = true
         setSurveyRunning(true)
-        showCalibrationRequiredDialog()
         (activity as? MainActivity)?.showStartHint("พร้อมเริ่มคาลิเบรต: วางธง 4 จุดและกรอกขนาดจริง")
         Toast.makeText(requireContext(), "Survey started: press Calibration and pin 4 points", Toast.LENGTH_LONG).show()
     }

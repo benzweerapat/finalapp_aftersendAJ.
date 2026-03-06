@@ -350,10 +350,10 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
         enbValue?.text = "eNB CI: -"
         textPressure?.text = "Pressure: --"
         textAltitude?.text = "Rel. Height: -"
-        textFloor?.text = "Floor: -"
+        textFloor?.text = "Floor: ${mainActivity.startFloor}"
         textGpsAltitude?.text = "Abs. Alt: -"
         textGpsRelHeight?.text = "Rel. Height: -"
-        textGpsFloor?.text = "Floor: -"
+        textGpsFloor?.text = "Floor: ${mainActivity.startFloor}"
         neighborAdapter.setData(emptyList())
 
     }
@@ -364,8 +364,9 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
         val press = mainActivity.currentFilteredPressure
         textPressure?.text = "Pressure: %.2f hPa".format(press)
 
-        var baroRelStr = "—"; var baroFloorStr = "—"
-        var gpsRelStr = "—"; var gpsFloorStr = "—"
+        val selectedFloor = mainActivity.startFloor.toString()
+        var baroRelStr = "—"; var baroFloorStr = selectedFloor
+        var gpsRelStr = "—"; var gpsFloorStr = selectedFloor
 
         if (mainActivity.referencePressure != -1f && press > 0) {
             val pRatio = press / mainActivity.referencePressure
@@ -377,7 +378,7 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
             textAltitude?.text = "Rel. Height: $baroRelStr m"
             textFloor?.text = "Floor: $baroFloorStr"
         } else {
-            textAltitude?.text = "Rel. Height: -"; textFloor?.text = "Floor: -"
+            textAltitude?.text = "Rel. Height: -"; textFloor?.text = "Floor: $baroFloorStr"
         }
 
         if (loc != null && loc.hasAltitude()) {
@@ -390,8 +391,14 @@ open class CellularFragment(layoutRes: Int = R.layout.fragment_cellular) : Fragm
                 gpsRelStr = "%.2f".format(rel)
                 gpsFloorStr = floor.toString()
                 textGpsRelHeight?.text = "Rel. Height: $gpsRelStr m"
-                textGpsFloor?.text = "Floor: $gpsFloorStr"
+            } else {
+                textGpsRelHeight?.text = "Rel. Height: -"
             }
+            textGpsFloor?.text = "Floor: $gpsFloorStr"
+        } else {
+            textGpsAltitude?.text = "Abs. Alt: -"
+            textGpsRelHeight?.text = "Rel. Height: -"
+            textGpsFloor?.text = "Floor: $gpsFloorStr"
         }
     }
 

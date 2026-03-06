@@ -693,6 +693,8 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
         val press = mainActivity.currentFilteredPressure
         textPressure?.text = "Pressure: %.2f hPa".format(press)
 
+        val selectedFloorText = "Floor: ${mainActivity.startFloor}"
+
         if (mainActivity.referencePressure != -1f && press > 0) {
             val h = 44330 * (1 - Math.pow((press / mainActivity.referencePressure).toDouble(), 1 / 5.255))
             textAltitude?.text = "Rel. Height: %.2f m".format(h)
@@ -703,7 +705,20 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
             textFloor?.text = "Floor: $floor"
         } else {
             textAltitude?.text = "Rel. Height: $NA"
-            textFloor?.text = "Floor: $NA"
+            textFloor?.text = selectedFloorText
+        }
+
+        val loc = mainActivity.latestLocation
+        if (loc != null && loc.hasAltitude() && mainActivity.referenceGpsAltitude != null) {
+            val rel = loc.altitude - mainActivity.referenceGpsAltitude!!
+            val gpsFloor =
+                mainActivity.startFloor +
+                        (rel / mainActivity.floorHeightMeters).roundToInt()
+            textGpsRelHeight?.text = "Rel. Height: %.2f m".format(rel)
+            textGpsFloor?.text = "Floor: $gpsFloor"
+        } else {
+            textGpsRelHeight?.text = "Rel. Height: $NA"
+            textGpsFloor?.text = selectedFloorText
         }
     }
 

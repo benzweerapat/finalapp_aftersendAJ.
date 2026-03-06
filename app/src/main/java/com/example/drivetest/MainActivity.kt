@@ -572,6 +572,13 @@ class MainActivity : AppCompatActivity() {
     }
 
 
+    private fun autoSetGroundForGnssStart() {
+        if (currentDriveMode != DriveMode.GNSS) return
+        if (!hasSelectedStartFloor) return
+        calibrateAltitude(startFloor)
+    }
+
+
 
     private fun updateTechButtonUi() {
         val btn = findViewById<Button>(R.id.btnDriveMode) ?: return
@@ -758,6 +765,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (!isRecordingCsv) {
                         if (!validateSelectionsBeforeStart()) return@setOnClickListener
+                        autoSetGroundForGnssStart()
 
                         cellFrag.setGroundButtonsVisible(false)
                         cellFrag.showGroundUiAfterStart()
@@ -804,6 +812,7 @@ class MainActivity : AppCompatActivity() {
 
                     if (!isRecordingWifiCsv) {
                         if (!validateSelectionsBeforeStart()) return@setOnClickListener
+                        autoSetGroundForGnssStart()
 
                         val fragment = fragment as WifiFragment
 
