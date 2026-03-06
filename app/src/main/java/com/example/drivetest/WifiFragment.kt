@@ -75,9 +75,9 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
 
 
     // Buttons
-    private lateinit var btnCalibrate: View
-    private lateinit var btnReset: View
-    private lateinit var btnEditFloorHeight: View
+    private var btnCalibrate: View? = null
+    private var btnReset: View? = null
+    private var btnEditFloorHeight: View? = null
 
     // RecyclerView
     private lateinit var wifiAdapter: WifiNeighborAdapter
@@ -268,7 +268,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
         // Buttons
         btnCalibrate = view.findViewById(R.id.btnCalibrate)
         btnReset = view.findViewById(R.id.btnReset)
-        btnReset.visibility = View.GONE
+        btnReset?.visibility = View.GONE
         btnEditFloorHeight = view.findViewById(R.id.btnEditFloorHeight)
         updateEditHeightButtonLabel(mainActivity.getFloorHeightButtonLabel())
 
@@ -287,7 +287,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
             }
         }
 
-        btnCalibrate.setOnClickListener {
+        btnCalibrate?.setOnClickListener {
 
             showStartFloorDialog { startFloor ->
 
@@ -307,7 +307,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
             }
         }
 
-        btnReset.setOnClickListener {
+        btnReset?.setOnClickListener {
             // 1️⃣ ล้าง reference
             mainActivity.referencePressure = -1f
             mainActivity.referenceGpsAltitude = null
@@ -347,7 +347,7 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
             mainActivity.toast("Reset Height")
         }
 
-        btnEditFloorHeight.setOnClickListener {
+        btnEditFloorHeight?.setOnClickListener {
             showEditDialog()
         }
 
