@@ -255,43 +255,6 @@
                         android:textStyle="bold"
                         android:textSize="14sp"/>
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="STANDARD"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiStandard"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="TX / RX"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiTxRx"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="— / — Mbps"
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
                 </LinearLayout>
 
                 <!-- DIVIDER -->
@@ -324,43 +287,6 @@
                         android:textStyle="bold"
                         android:textSize="16sp"/>
 
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SNR"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiSnr"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="— "
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="12dp"/>
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="SPEED"
-                        android:textColor="#80FFFFFF"
-                        android:textSize="11sp"/>
-
-                    <TextView
-                        android:id="@+id/wifiSpeed"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="— Mbps"
-                        android:textColor="#E0E0E0"
-                        android:textSize="13sp"/>
                 </LinearLayout>
 
             </LinearLayout>
@@ -411,14 +337,6 @@
                             android:textSize="18sp"
                             android:textStyle="bold"
                             android:textColor="#22C55E" />
-                        <TextView
-                            android:id="@+id/textBaroEstimated"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="estimated level"
-                            android:textColor="#22C55E"
-                            android:textSize="11sp"
-                            android:layout_marginBottom="4dp"/>
 
 
                         <TextView
@@ -468,14 +386,6 @@
                             android:textSize="18sp"
                             android:textStyle="bold"
                             android:textColor="#22C55E"/>
-                        <TextView
-                            android:id="@+id/textGpsEstimated"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="estimated level"
-                            android:textColor="#22C55E"
-                            android:textSize="11sp"
-                            android:layout_marginBottom="4dp"/>
 
 
                         <TextView

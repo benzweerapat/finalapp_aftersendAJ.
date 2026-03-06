@@ -26,13 +26,7 @@
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
-            <Button
-                android:id="@+id/btnCalibration"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="🎯 Calibration"
-                android:textAllCaps="false"
-                android:textSize="11sp" />
+
 
             <Button
                 android:id="@+id/btnBrowseFloorPlan"

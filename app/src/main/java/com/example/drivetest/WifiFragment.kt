@@ -108,7 +108,16 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
         }
     }
 
-
+    fun setButtonsState(isRecording: Boolean) {
+        val alpha = if (isRecording) 0.5f else 1.0f
+        val enabled = !isRecording
+        btnCalibrate?.isEnabled = enabled
+        btnCalibrate?.alpha = alpha
+        btnReset?.isEnabled = enabled
+        btnReset?.alpha = alpha
+        btnEditFloorHeight?.isEnabled = enabled
+        btnEditFloorHeight?.alpha = alpha
+    }
     fun setGroundButtonsVisible(visible: Boolean) {
         val v = if (visible) View.VISIBLE else View.GONE
         btnCalibrate?.visibility = v
@@ -242,12 +251,12 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
         wifiLinkSpeed = view.findViewById(R.id.wifiLinkSpeed)
         wifiChannel = view.findViewById(R.id.wifiChannel)
         wifiBw = view.findViewById(R.id.wifiBw)
-        wifiStandard = view.findViewById(R.id.wifiStandard)
+
         wifiSecurity = view.findViewById(R.id.wifiSecurity)
-        wifiTxRx = view.findViewById(R.id.wifiTxRx)
+
         wifiSignalQual = view.findViewById(R.id.wifiSignalQual)
-        wifiSnr = view.findViewById(R.id.wifiSnr)
-        wifiSpeed = view.findViewById(R.id.wifiSpeed)
+
+
         latLngValue = view.findViewById(R.id.latLngValue)
         iconGps = view.findViewById(R.id.iconGps)
         iconWifi = view.findViewById(R.id.iconWifi)
@@ -351,7 +360,10 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
             showEditDialog()
         }
 
+
+
         setGroundButtonsVisible(!mainActivity.isRecordingWifiCsv)
+        setButtonsState(mainActivity.isRecordingWifiCsv)
     }
 
     private fun showEditDialog() {
@@ -690,35 +702,46 @@ open class WifiFragment(layoutRes: Int = R.layout.fragment_wifi) : Fragment(layo
 
 
     private fun updateAltitudeInfo() {
+        val loc = mainActivity.latestLocation
+        latLngValue?.text = if (loc != null) "%.5f / %.5f".format(loc.latitude, loc.longitude) else "— / —"
         val press = mainActivity.currentFilteredPressure
         textPressure?.text = "Pressure: %.2f hPa".format(press)
 
-        val selectedFloorText = "Floor: ${mainActivity.startFloor}"
+        val selectedFloor = mainActivity.startFloor.toString()
+        var baroRelStr = "—"; var baroFloorStr = selectedFloor
+        var gpsRelStr = "—"; var gpsFloorStr = selectedFloor
 
         if (mainActivity.referencePressure != -1f && press > 0) {
-            val h = 44330 * (1 - Math.pow((press / mainActivity.referencePressure).toDouble(), 1 / 5.255))
-            textAltitude?.text = "Rel. Height: %.2f m".format(h)
+            val pRatio = press / mainActivity.referencePressure
+            val h = 44330 * (1 - Math.pow(pRatio.toDouble(), 1/5.255)).toFloat()
             val floor =
-                mainActivity.startFloor +
-                        (h / mainActivity.floorHeightMeters).roundToInt()
-
-            textFloor?.text = "Floor: $floor"
+                mainActivity.startFloor + (h / mainActivity.floorHeightMeters).roundToInt()
+            baroRelStr = "%.2f".format(h)
+            baroFloorStr = floor.toString()
+            textAltitude?.text = "Rel. Height: $baroRelStr m"
+            textFloor?.text = "Floor: $baroFloorStr"
         } else {
-            textAltitude?.text = "Rel. Height: $NA"
-            textFloor?.text = selectedFloorText
+            textAltitude?.text = "Rel. Height: -"; textFloor?.text = "Floor: $baroFloorStr"
         }
 
-        val loc = mainActivity.latestLocation
-        if (loc != null && loc.hasAltitude() && mainActivity.referenceGpsAltitude != null) {
-            val rel = loc.altitude - mainActivity.referenceGpsAltitude!!
-            val gpsFloor =
-                mainActivity.startFloor +
-                        (rel / mainActivity.floorHeightMeters).roundToInt()
-            textGpsRelHeight?.text = "Rel. Height: %.2f m".format(rel)
-            textGpsFloor?.text = "Floor: $gpsFloor"
+        if (loc != null && loc.hasAltitude()) {
+            textGpsAltitude?.text = "Abs. Alt: %.1f m".format(loc.altitude)
+            if (mainActivity.referenceGpsAltitude != null) {
+                val rel = loc.altitude - mainActivity.referenceGpsAltitude!!
+                val floor =
+                    mainActivity.startFloor +
+                            (rel / mainActivity.floorHeightMeters).roundToInt()
+                gpsRelStr = "%.2f".format(rel)
+                gpsFloorStr = floor.toString()
+                textGpsRelHeight?.text = "Rel. Height: $gpsRelStr m"
+            } else {
+                textGpsRelHeight?.text = "Rel. Height: -"
+            }
+            textGpsFloor?.text = "Floor: $gpsFloorStr"
         } else {
-            textGpsRelHeight?.text = "Rel. Height: $NA"
-            textGpsFloor?.text = selectedFloorText
+            textGpsAltitude?.text = "Abs. Alt: -"
+            textGpsRelHeight?.text = "Rel. Height: -"
+            textGpsFloor?.text = "Floor: $gpsFloorStr"
         }
     }
 

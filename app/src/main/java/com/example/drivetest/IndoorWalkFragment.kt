@@ -184,6 +184,8 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                     // ตั้งค่า floor
                     main.onIndoorStartFloorSelected(selectedFloor)
 
+                    main.calibrateAltitude(selectedFloor)
+
                     // อัปเดต label ปุ่มใน panel
                     updateGroundControlLabels()
 
@@ -192,6 +194,11 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
                         "Selected floor: $selectedFloor",
                         Toast.LENGTH_SHORT
                     ).show()
+                    // ✅ แสดง Calibration Guide หลังเลือก floor
+                    if (!calibrationGuideShown) {
+                        showCalibrationRequiredDialog()
+                        calibrationGuideShown = true
+                    }
                 }
             }
         }
@@ -499,10 +506,7 @@ class IndoorWalkFragment : Fragment(R.layout.fragment_indoor_walk) {
             return
         }
 
-        if (!calibrationGuideShown) {
-            showCalibrationRequiredDialog()
-            calibrationGuideShown = true
-        }
+
 
         calibrationPointsNormalized.add(pinTip)
         mapView.setCalibrationFlagsNormalized(calibrationPointsNormalized)

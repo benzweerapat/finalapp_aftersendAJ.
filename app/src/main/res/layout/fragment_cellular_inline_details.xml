@@ -167,33 +167,7 @@
             android:layout_marginBottom="12dp"
             app:cardBackgroundColor="#1E1E1E"
             app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="top"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Location"
-                    android:textColor="#80FFFFFF"
-                    android:textSize="11sp"
-                    android:layout_marginEnd="8dp" />
-
-                <TextView
-                    android:id="@+id/latLngValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="— / —"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:textStyle="bold"/>
-            </LinearLayout>
-        </androidx.cardview.widget.CardView>
+            app:cardElevation="0dp"/>
 
         <androidx.cardview.widget.CardView
             android:layout_width="match_parent"
@@ -239,14 +213,6 @@
                             android:textSize="18sp"
                             android:textStyle="bold"
                             android:textColor="#22C55E" />
-                        <TextView
-                            android:id="@+id/textBaroEstimated"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="estimated level"
-                            android:textColor="#22C55E"
-                            android:textSize="11sp"
-                            android:layout_marginBottom="4dp"/>
 
 
                         <TextView
@@ -296,14 +262,6 @@
                             android:textSize="18sp"
                             android:textStyle="bold"
                             android:textColor="#22C55E"/>
-                        <TextView
-                            android:id="@+id/textGpsEstimated"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="estimated level"
-                            android:textColor="#22C55E"
-                            android:textSize="11sp"
-                            android:layout_marginBottom="4dp"/>
 
 
                         <TextView
